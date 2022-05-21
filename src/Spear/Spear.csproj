@@ -9,5 +9,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.1" />
+    <PackageReference Include="Remora.Discord" Version="2022.29.0" />
   </ItemGroup>
 </Project>

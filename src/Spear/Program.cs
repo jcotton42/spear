@@ -1,9 +1,12 @@
-using Spear;
+using Remora.Discord.Gateway;
+using Remora.Discord.Hosting.Extensions;
 
-IHost host = Host
+var host = Host
     .CreateDefaultBuilder(args)
+    .AddDiscordService(services => services.GetRequiredService<IConfiguration>()["DiscordToken"])
     .ConfigureServices(services => {
-        services.AddHostedService<Worker>();
+        services.Configure<DiscordGatewayClientOptions>(options => {
+        });
     })
     .Build();
 
