@@ -1,3 +1,4 @@
+using EntityFramework.Exceptions.PostgreSQL;
 using Microsoft.EntityFrameworkCore;
 using Remora.Commands.Extensions;
 using Remora.Discord.API;
@@ -29,11 +30,12 @@ var host = Host
         var password = hostContext.Configuration["PgPassword"];
         services.AddDbContext<SpearContext>(options => options.UseNpgsql(
             $"Host={host};Database={database};Username={username};Password={password}"
-        ));
+        ).UseExceptionProcessor());
 
         services
             .AddDiscordCommands(enableSlash: true)
             .AddCommandTree()
+                .WithCommandGroup<GuildCommands>()
                 .WithCommandGroup<PromptCommands>();
     })
     .Build();
