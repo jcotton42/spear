@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Remora.Commands.Extensions;
 using Remora.Discord.API;
 using Remora.Discord.API.Abstractions.Gateway.Commands;
@@ -8,6 +9,7 @@ using Remora.Discord.Gateway;
 using Remora.Discord.Hosting.Extensions;
 using Remora.Rest.Core;
 using Spear.Commands;
+using Spear.Models;
 
 var host = Host
     .CreateDefaultBuilder(args)
@@ -18,9 +20,16 @@ var host = Host
             "No bot token provided"
         );
     })
-    .ConfigureServices((context, services) => {
+    .ConfigureServices((hostContext, services) => {
         services.Configure<DiscordGatewayClientOptions>(options => options.Intents = GatewayIntents.Guilds);
         services.Configure<InteractionResponderOptions>(options => options.SuppressAutomaticResponses = true);
+        var host = hostContext.Configuration["PgHost"];
+        var database = hostContext.Configuration["PgDatabase"];
+        var username = hostContext.Configuration["PgUsername"];
+        var password = hostContext.Configuration["PgPassword"];
+        services.AddDbContext<SpearContext>(options => options.UseNpgsql(
+            $"Host={host};Database={database};Username={username};Password={password}"
+        ));
 
         services
             .AddDiscordCommands(enableSlash: true)
