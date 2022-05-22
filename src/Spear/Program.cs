@@ -1,9 +1,8 @@
-using System.Reflection.Metadata.Ecma335;
 using Remora.Commands.Extensions;
 using Remora.Discord.API;
 using Remora.Discord.API.Abstractions.Gateway.Commands;
-using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Extensions;
+using Remora.Discord.Commands.Responders;
 using Remora.Discord.Commands.Services;
 using Remora.Discord.Gateway;
 using Remora.Discord.Hosting.Extensions;
@@ -21,6 +20,7 @@ var host = Host
     })
     .ConfigureServices((context, services) => {
         services.Configure<DiscordGatewayClientOptions>(options => options.Intents = GatewayIntents.Guilds);
+        services.Configure<InteractionResponderOptions>(options => options.SuppressAutomaticResponses = true);
 
         services
             .AddDiscordCommands(enableSlash: true)
