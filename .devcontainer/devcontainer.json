@@ -2,8 +2,8 @@
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.234.0/containers/dotnet-postgres
 {
     "name": "Spear",
-    "dockerComposeFile": "docker-compose.yml",
-    "service": "app",
+    "dockerComposeFile": ["../docker-compose.yml", "docker-compose.devcontainer.yml"],
+    "service": "spear",
     "workspaceFolder": "/workspace",
 
     // Set *default* container specific settings.json values on container create.
@@ -35,7 +35,7 @@
 	//      3. Open a terminal in VS Code and run "mkdir -p /home/vscode/.aspnet/https && mv aspnetapp.pfx /home/vscode/.aspnet/https"
 
     // Use 'postCreateCommand' to run commands after the container is created.
-    // "postCreateCommand": "dotnet --info",
+    "postCreateCommand": "dotnet restore && dotnet tool restore",
 
     // Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
     "remoteUser": "vscode"
