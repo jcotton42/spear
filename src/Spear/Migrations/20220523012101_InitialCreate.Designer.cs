@@ -11,7 +11,7 @@ using Spear.Models;
 namespace Spear.Migrations
 {
     [DbContext(typeof(SpearContext))]
-    [Migration("20220522065153_InitialCreate")]
+    [Migration("20220523012101_InitialCreate")]
     partial class InitialCreate
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -26,36 +26,44 @@ namespace Spear.Migrations
             modelBuilder.Entity("Spear.Models.Guild", b =>
                 {
                     b.Property<ulong>("Id")
-                        .HasColumnType("numeric(20,0)");
+                        .HasColumnType("numeric(20,0)")
+                        .HasColumnName("id");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_guilds");
 
-                    b.ToTable("Guilds");
+                    b.ToTable("guilds", (string)null);
                 });
 
             modelBuilder.Entity("Spear.Models.Prompt", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<ulong>("GuildId")
-                        .HasColumnType("numeric(20,0)");
+                        .HasColumnType("numeric(20,0)")
+                        .HasColumnName("guild_id");
 
                     b.Property<ulong?>("Submitter")
-                        .HasColumnType("numeric(20,0)");
+                        .HasColumnType("numeric(20,0)")
+                        .HasColumnName("submitter");
 
                     b.Property<string>("Text")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("text");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_prompts");
 
-                    b.HasIndex("GuildId");
+                    b.HasIndex("GuildId")
+                        .HasDatabaseName("ix_prompts_guild_id");
 
-                    b.ToTable("Prompts");
+                    b.ToTable("prompts", (string)null);
                 });
 
             modelBuilder.Entity("Spear.Models.Prompt", b =>
@@ -64,7 +72,8 @@ namespace Spear.Migrations
                         .WithMany("Prompts")
                         .HasForeignKey("GuildId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_prompts_guilds_guild_id");
                 });
 
             modelBuilder.Entity("Spear.Models.Guild", b =>

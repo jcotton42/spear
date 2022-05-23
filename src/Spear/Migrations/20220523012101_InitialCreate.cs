@@ -10,50 +10,50 @@ namespace Spear.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Guilds",
+                name: "guilds",
                 columns: table => new
                 {
-                    Id = table.Column<ulong>(type: "numeric(20,0)", nullable: false)
+                    id = table.Column<ulong>(type: "numeric(20,0)", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Guilds", x => x.Id);
+                    table.PrimaryKey("pk_guilds", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Prompts",
+                name: "prompts",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "integer", nullable: false)
+                    id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Text = table.Column<string>(type: "text", nullable: false),
-                    Submitter = table.Column<ulong>(type: "numeric(20,0)", nullable: true),
-                    GuildId = table.Column<ulong>(type: "numeric(20,0)", nullable: false)
+                    text = table.Column<string>(type: "text", nullable: false),
+                    submitter = table.Column<ulong>(type: "numeric(20,0)", nullable: true),
+                    guild_id = table.Column<ulong>(type: "numeric(20,0)", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Prompts", x => x.Id);
+                    table.PrimaryKey("pk_prompts", x => x.id);
                     table.ForeignKey(
-                        name: "FK_Prompts_Guilds_GuildId",
-                        column: x => x.GuildId,
-                        principalTable: "Guilds",
-                        principalColumn: "Id",
+                        name: "fk_prompts_guilds_guild_id",
+                        column: x => x.guild_id,
+                        principalTable: "guilds",
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Prompts_GuildId",
-                table: "Prompts",
-                column: "GuildId");
+                name: "ix_prompts_guild_id",
+                table: "prompts",
+                column: "guild_id");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Prompts");
+                name: "prompts");
 
             migrationBuilder.DropTable(
-                name: "Guilds");
+                name: "guilds");
         }
     }
 }

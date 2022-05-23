@@ -1,3 +1,4 @@
+using EntityFramework.Exceptions.PostgreSQL;
 using Microsoft.EntityFrameworkCore;
 using Remora.Rest.Core;
 
@@ -13,5 +14,11 @@ public class SpearContext : DbContext {
         configurationBuilder
             .Properties<Snowflake>()
             .HaveConversion<DiscordSnowflakeConverter>();
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder options) {
+        options
+            .UseExceptionProcessor()
+            .UseSnakeCaseNamingConvention();
     }
 }
