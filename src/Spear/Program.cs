@@ -10,6 +10,7 @@ using Remora.Discord.Hosting.Extensions;
 using Remora.Rest.Core;
 using Spear.Commands;
 using Spear.Models;
+using Spear.Services;
 
 var host = Host
     .CreateDefaultBuilder(args)
@@ -31,11 +32,14 @@ var host = Host
             $"Host={host};Database={database};Username={username};Password={password}"
         ));
 
+        services.AddScoped<BookService>();
+
         services
             .AddDiscordCommands(enableSlash: true)
             .AddCommandTree()
                 .WithCommandGroup<GuildCommands>()
-                .WithCommandGroup<PromptCommands>();
+                .WithCommandGroup<PromptCommands>()
+                .WithCommandGroup<MiscCommands>();
     })
     .Build();
 
