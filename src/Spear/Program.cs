@@ -36,6 +36,7 @@ var host = Host
 
         services
             .AddDiscordCommands(enableSlash: true)
+            .AddPostExecutionEvent<PostExecutionHandler>()
             .AddCommandTree()
                 .WithCommandGroup<GuildCommands>()
                 .WithCommandGroup<PromptCommands>()

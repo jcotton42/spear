@@ -61,6 +61,29 @@ public class BookService {
     }
 
     /// <summary>
+    /// Gets a random book for the given guild.
+    /// </summary>
+    /// <param name="guild">The guild to search in.</param>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>
+    /// <para>
+    /// A successful <see cref="Result{TEntity}"/> with the book's title if a book was found.
+    /// </para>
+    /// <para>
+    /// A <see cref="Result{TEntity}"/> with an error of <see cref="NotFoundError"/> if no book could be found.
+    /// </para>
+    /// </returns>
+    public Task<Result<string>> GetRandomGuildBook(Snowflake guild, CancellationToken ct) {
+        var type = Random.Shared.Next(100) switch {
+            0 => BookType.Meme,
+            < 30 => BookType.Fic,
+            _ => BookType.Book,
+        };
+
+        return GetRandomGuildBookOfType(type, guild, ct);
+    }
+
+    /// <summary>
     /// Gets a random book of the given type for the given guild.
     /// </summary>
     /// <param name="type">The type of book.</param>

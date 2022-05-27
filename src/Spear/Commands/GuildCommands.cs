@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using EntityFramework.Exceptions.Common;
+using Microsoft.EntityFrameworkCore;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
