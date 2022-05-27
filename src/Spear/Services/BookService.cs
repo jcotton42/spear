@@ -52,11 +52,11 @@ public class BookService {
         _context.Books.Add(book);
         try {
             await _context.SaveChangesAsync(ct);
-            return Result<int>.FromSuccess(book.Id);
+            return book.Id;
         } catch(UniqueConstraintException) {
-            return Result<int>.FromError(new InvalidOperationError(
+            return new InvalidOperationError(
                 $"'{title}' with type {type} is already registered for guild {guild}"
-            ));
+            );
         }
     }
 
@@ -85,11 +85,11 @@ public class BookService {
             var id = ids[Random.Shared.Next(ids.Count)];
             var book = await _context.Books
                 .SingleAsync(b => b.Id == id, ct);
-            return Result<string>.FromSuccess(book.Title);
+            return book.Title;
         } else {
-            return Result<string>.FromError(new NotFoundError(
+            return new NotFoundError(
                 $"No book of type {type} was found for guild {guild}."
-            ));
+            );
         }
     }
 
@@ -116,11 +116,11 @@ public class BookService {
         var affected = await _context.SaveChangesAsync(ct);
 
         if(affected > 0) {
-            return Result<int>.FromSuccess(affected);
+            return affected;
         } else {
-            return Result<int>.FromError(new NotFoundError(
+            return new NotFoundError(
                 $"No books matching title {title} and {type} were found for removal."
-            ));
+            );
         }
     }
 }

@@ -25,7 +25,7 @@ public class GuildCommands : CommandGroup {
     [Command("register")]
     [RequireContext(ChannelContext.Guild)]
     [Description("Registers this server with the bot")]
-    public async Task<IResult> RegisterAsync() {
+    public async Task<Result> RegisterAsync() {
         _spearContext.Guilds.Add(new Guild {
             Id = _commandContext.GuildID.Value
         });
@@ -35,7 +35,7 @@ public class GuildCommands : CommandGroup {
             await _spearContext.SaveChangesAsync(CancellationToken);
             reply = await _feedback.SendContextualSuccessAsync("I've registered your server!", ct: CancellationToken);
         } catch(UniqueConstraintException) {
-            reply = await _feedback.SendContextualErrorAsync("Your guild is already registered!", ct: CancellationToken);
+            return new InvalidOperationError("Your guild is already registered!");
         }
 
         return reply.IsSuccess ? Result.FromSuccess() : Result.FromError(reply);
