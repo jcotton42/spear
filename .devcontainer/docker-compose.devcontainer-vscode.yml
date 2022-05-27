@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  spear:
+    image: spear-devenv-vscode
+    build:
+      target: vscode
+    user: vscode
+    command: sleep infinity
