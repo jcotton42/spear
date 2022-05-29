@@ -32,12 +32,15 @@ var host = Host
             $"Host={host};Database={database};Username={username};Password={password}"
         ));
 
-        services.AddScoped<BookService>();
+        services
+            .AddScoped<AuthorizationService>()
+            .AddScoped<BookService>();
 
         services
             .AddDiscordCommands(enableSlash: true)
             .AddPostExecutionEvent<PostExecutionHandler>()
             .AddCommandTree()
+                .WithCommandGroup<AuthorizationCommands>()
                 .WithCommandGroup<GuildCommands>()
                 .WithCommandGroup<PromptCommands>()
                 .WithCommandGroup<MiscCommands>();
