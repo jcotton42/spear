@@ -42,12 +42,14 @@ var host = Host
         services
             .AddDiscordCommands(enableSlash: true)
             .AddCondition<RequireRegisteredGuildCondition>()
+            .AddPreExecutionEvent<PreExecutionHandler>()
             .AddPostExecutionEvent<PostExecutionHandler>()
             .AddCommandTree()
-                .WithCommandGroup<AuthorizationCommands>()
-                .WithCommandGroup<GuildCommands>()
-                .WithCommandGroup<PromptCommands>()
-                .WithCommandGroup<MiscCommands>();
+                .WithCommandGroup<OldMan>()
+                .WithCommandGroup<OldMan.AuthorizationCommands>()
+                .WithCommandGroup<OldMan.GuildCommands>()
+                .WithCommandGroup<OldMan.MiscCommands>()
+                .WithCommandGroup<OldMan.PromptCommands>();
     })
     .Build();
 
