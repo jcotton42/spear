@@ -34,7 +34,8 @@ var host = Host
 
         services
             .AddScoped<AuthorizationService>()
-            .AddScoped<BookService>();
+            .AddScoped<BookService>()
+            .AddScoped<PromptService>();
 
         services
             .AddDiscordCommands(enableSlash: true)

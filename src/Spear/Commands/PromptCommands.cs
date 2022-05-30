@@ -1,65 +1,47 @@
 using System.ComponentModel;
-using Microsoft.EntityFrameworkCore;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.Commands.Conditions;
-using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
-using Spear.Models;
+using Spear.Services;
 
 namespace Spear.Commands;
 
+[RequireContext(ChannelContext.Guild)]
 public class PromptCommands : CommandGroup {
-    private readonly ICommandContext _commandContext;
     private readonly FeedbackService _feedback;
-    private readonly SpearContext _spearContext;
+    private readonly PromptService _prompt;
 
-    public PromptCommands(ICommandContext commandContext, FeedbackService feedback, SpearContext spearContext) {
-        _commandContext = commandContext;
+    public PromptCommands(FeedbackService feedback, PromptService prompt) {
         _feedback = feedback;
-        _spearContext = spearContext;
+        _prompt = prompt;
     }
 
     [Command("suggest")]
-    [RequireContext(ChannelContext.Guild)]
     [Description("Add a suggestion to the prompt list")]
     public async Task<IResult> SuggestAsync(
         [Description(@"The suggestion. Use `\n` for line breaks.")] string suggestion
     ) {
         suggestion = suggestion.Replace("\\n", "\n");
-        var prompt = new Prompt {
-            GuildId = _commandContext.GuildID.Value,
-            Submitter = _commandContext.User.ID,
-            Text = suggestion,
-        };
-
-        _spearContext.Prompts.Add(prompt);
-        await _spearContext.SaveChangesAsync(CancellationToken);
+        var result = await _prompt.AddPromptAsync(suggestion, CancellationToken);
+        if(!result.IsDefined(out var id)) return result;
 
         return await _feedback.SendContextualSuccessAsync(
-            $"That's an excellent suggestion! I'll add it to the list\n#`{prompt.Id}`\n>>> {suggestion}",
+            $"That's an excellent suggestion! I'll add it to the list\n#`{id}`\n>>> {suggestion}",
             ct: CancellationToken
         );
     }
 
     [Command("editprompt")]
-    [RequireContext(ChannelContext.Guild)]
     [Description("Edits a prompt")]
     public async Task<IResult> EditPromptAsync(
         [Description("The prompt's ID")] int id,
         [Description(@"The new prompt. Use `\n` for line breaks")] string newSuggestion
     ) {
         newSuggestion = newSuggestion.Replace("\\n", "\n");
-        var prompt = await _spearContext.Prompts
-            .FirstOrDefaultAsync(p => p.Id == id && p.GuildId == _commandContext.GuildID.Value, CancellationToken);
-        if(prompt is null) {
-            return Result.FromError(new NotFoundError($"No prompt found with ID {id}"));
-        }
-
-        // TODO check permissions (submitter can always edit, as well as anyone with Manage Guild)
-        prompt.Text = newSuggestion;
-        await _spearContext.SaveChangesAsync(CancellationToken);
+        var edit = await _prompt.EditPromptAsync(id, newSuggestion, CancellationToken);
+        if(!edit.IsSuccess) return edit;
 
         return await _feedback.SendContextualSuccessAsync(
             $"I have updated the suggestion.\n>>> {newSuggestion}",
@@ -68,20 +50,12 @@ public class PromptCommands : CommandGroup {
     }
 
     [Command("deleteprompt")]
-    [RequireContext(ChannelContext.Guild)]
     [Description("Deletes a prompt")]
     public async Task<IResult> DeletePromptAsync(
         [Description("The prompt's ID")] int id
     ) {
-        var prompt = await _spearContext.Prompts
-            .FirstOrDefaultAsync(p => p.Id == id && p.GuildId == _commandContext.GuildID.Value, CancellationToken);
-        if(prompt is null) {
-            return Result.FromError(new NotFoundError($"No prompt found with ID {id}"));
-        }
-
-        // TODO check permissions
-        _spearContext.Prompts.Remove(prompt);
-        await _spearContext.SaveChangesAsync(CancellationToken);
+        var delete = await _prompt.DeletePromptAsync(id, CancellationToken);
+        if(!delete.IsSuccess) return delete;
 
         return await _feedback.SendContextualSuccessAsync(
             "I have deleted the prompt.",
@@ -90,22 +64,14 @@ public class PromptCommands : CommandGroup {
     }
 
     [Command("prompt")]
-    [RequireContext(ChannelContext.Guild)]
     [Description("Gets a random prompt")]
     public async Task<IResult> PromptAsync() {
-        var ids = await _spearContext.Prompts
-            .Where(p => p.GuildId == _commandContext.GuildID.Value)
-            .Select(p => p.Id)
-            .ToListAsync(CancellationToken);
-        if(!ids.Any()) {
-            return Result.FromError(new NotFoundError("No prompts are available for this guild."));
-        }
+        var get = await _prompt.GetRandomPromptAsync(CancellationToken);
+        if(!get.IsDefined(out var prompt)) return get;
 
-        var id = ids[Random.Shared.Next(ids.Count)];
-        var prompt = await _spearContext.Prompts.SingleAsync(p => p.Id == id, CancellationToken);
         var creditLine = prompt.Submitter is not null ? $" by <@{prompt.Submitter}>" : "";
 
-        return await _feedback.SendContextualSuccessAsync(
+        return await _feedback.SendContextualNeutralAsync(
             $"May I suggest the following{creditLine}?\n#`{prompt.Id}`\n >>> {prompt.Text}",
             ct: CancellationToken
         );
