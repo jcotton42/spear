@@ -9,6 +9,7 @@ using Remora.Discord.Gateway;
 using Remora.Discord.Hosting.Extensions;
 using Remora.Rest.Core;
 using Spear.Commands;
+using Spear.Conditions;
 using Spear.Models;
 using Spear.Services;
 
@@ -35,10 +36,12 @@ var host = Host
         services
             .AddScoped<AuthorizationService>()
             .AddScoped<BookService>()
+            .AddScoped<GuildService>()
             .AddScoped<PromptService>();
 
         services
             .AddDiscordCommands(enableSlash: true)
+            .AddCondition<RequireRegisteredGuildCondition>()
             .AddPostExecutionEvent<PostExecutionHandler>()
             .AddCommandTree()
                 .WithCommandGroup<AuthorizationCommands>()

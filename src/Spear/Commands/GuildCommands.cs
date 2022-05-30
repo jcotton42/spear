@@ -1,44 +1,31 @@
 using System.ComponentModel;
-using EntityFramework.Exceptions.Common;
-using Microsoft.EntityFrameworkCore;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.Commands.Conditions;
-using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
-using Spear.Models;
+using Spear.Services;
 
 namespace Spear.Commands;
 
+[RequireContext(ChannelContext.Guild)]
+[RequireDiscordPermission(DiscordPermission.ManageGuild)]
 public class GuildCommands : CommandGroup {
-    private readonly ICommandContext _commandContext;
     private readonly FeedbackService _feedback;
-    private readonly SpearContext _spearContext;
+    private readonly GuildService _guild;
 
-    public GuildCommands(ICommandContext commandContext, FeedbackService feedback, SpearContext spearContext) {
-        _commandContext = commandContext;
+    public GuildCommands(FeedbackService feedback, GuildService guild) {
         _feedback = feedback;
-        _spearContext = spearContext;
+        _guild = guild;
     }
 
     [Command("register")]
-    [RequireContext(ChannelContext.Guild)]
     [Description("Registers this server with the bot")]
-    public async Task<Result> RegisterAsync() {
-        _spearContext.Guilds.Add(new Guild {
-            Id = _commandContext.GuildID.Value
-        });
+    public async Task<IResult> RegisterAsync() {
+        var register = await _guild.RegisterGuildAsync(CancellationToken);
+        if(!register.IsSuccess) return register;
 
-        Result<IReadOnlyList<IMessage>> reply;
-        try {
-            await _spearContext.SaveChangesAsync(CancellationToken);
-            reply = await _feedback.SendContextualSuccessAsync("I've registered your server!", ct: CancellationToken);
-        } catch(UniqueConstraintException) {
-            return new InvalidOperationError("Your guild is already registered!");
-        }
-
-        return reply.IsSuccess ? Result.FromSuccess() : Result.FromError(reply);
+        return await _feedback.SendContextualSuccessAsync("I've registered your server!", ct: CancellationToken);
     }
 }
