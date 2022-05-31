@@ -23,7 +23,13 @@ var host = Host
         );
     })
     .ConfigureServices((hostContext, services) => {
-        services.Configure<DiscordGatewayClientOptions>(options => options.Intents = GatewayIntents.Guilds);
+        var appId = hostContext.Configuration["DiscordAppId"];
+        if(appId is not null) {
+            services.Configure<CommandResponderOptions>(options => options.Prefix = $"<@{appId}>");
+        }
+
+        services.Configure<DiscordGatewayClientOptions>(options =>
+            options.Intents = GatewayIntents.Guilds | GatewayIntents.GuildMessages);
         services.Configure<InteractionResponderOptions>(options => options.SuppressAutomaticResponses = true);
         var host = hostContext.Configuration["PgHost"];
         var database = hostContext.Configuration["PgDatabase"];

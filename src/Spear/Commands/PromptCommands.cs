@@ -25,6 +25,7 @@ public partial class OldMan {
         [Description("Add a suggestion to the prompt list")]
         public async Task<IResult> SuggestAsync(
             [Description(@"The suggestion. Use `\n` for line breaks.")]
+            [Greedy]
             string suggestion
         ) {
             suggestion = suggestion.Replace("\\n", "\n");
@@ -42,6 +43,7 @@ public partial class OldMan {
         public async Task<IResult> EditPromptAsync(
             [Description("The prompt's ID")] int id,
             [Description(@"The new prompt. Use `\n` for line breaks")]
+            [Greedy]
             string newSuggestion
         ) {
             newSuggestion = newSuggestion.Replace("\\n", "\n");
