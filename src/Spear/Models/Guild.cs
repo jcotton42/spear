@@ -4,7 +4,7 @@ namespace Spear.Models;
 
 public class Guild {
     public Snowflake Id { get; set; }
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
 
     public List<Book> Books { get; set; } = null!;
     public List<PermissionDefault> PermissionDefaults { get; set; } = null!;

@@ -6,7 +6,6 @@ using Remora.Discord.Commands.Conditions;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
-using Spear.Conditions.Attributes;
 using Spear.Models;
 using Spear.Services;
 
@@ -16,7 +15,6 @@ public partial class OldMan {
     [Group("auth")]
     [RequireContext(ChannelContext.Guild)]
     [RequireDiscordPermission(DiscordPermission.ManageGuild)]
-    [RequireRegisteredGuild]
     public class AuthorizationCommands : CommandGroup {
         private readonly AuthorizationService _authorization;
         private readonly ICommandContext _commandContext;

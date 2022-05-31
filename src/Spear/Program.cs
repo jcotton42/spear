@@ -6,11 +6,12 @@ using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Responders;
 using Remora.Discord.Commands.Services;
 using Remora.Discord.Gateway;
+using Remora.Discord.Gateway.Extensions;
 using Remora.Discord.Hosting.Extensions;
 using Remora.Rest.Core;
 using Spear.Commands;
-using Spear.Conditions;
 using Spear.Models;
+using Spear.Responders;
 using Spear.Services;
 
 var host = Host
@@ -46,8 +47,8 @@ var host = Host
             .AddScoped<PromptService>();
 
         services
+            .AddResponder<RegistrationResponder>()
             .AddDiscordCommands(enableSlash: true)
-            .AddCondition<RequireRegisteredGuildCondition>()
             .AddPreExecutionEvent<PreExecutionHandler>()
             .AddPostExecutionEvent<PostExecutionHandler>()
             .AddCommandTree()

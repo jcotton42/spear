@@ -4,14 +4,12 @@ using Remora.Commands.Groups;
 using Remora.Discord.Commands.Conditions;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
-using Spear.Conditions.Attributes;
 using Spear.Services;
 
 namespace Spear.Commands;
 
 public partial class OldMan {
     [RequireContext(ChannelContext.Guild)]
-    [RequireRegisteredGuild]
     public class PromptCommands : CommandGroup {
         private readonly FeedbackService _feedback;
         private readonly PromptService _prompt;
