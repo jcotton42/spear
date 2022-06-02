@@ -16,7 +16,8 @@ public class SpearContext : DbContext {
         NpgsqlConnection.GlobalTypeMapper
             .MapEnum<BookType>()
             .MapEnum<Permission>()
-            .MapEnum<PermissionMode>();
+            .MapEnum<PermissionMode>()
+            .MapEnum<Rating>();
     }
 
     public SpearContext(DbContextOptions<SpearContext> options) : base(options) {}
@@ -37,7 +38,8 @@ public class SpearContext : DbContext {
         builder
             .HasPostgresEnum<BookType>()
             .HasPostgresEnum<Permission>()
-            .HasPostgresEnum<PermissionMode>();
+            .HasPostgresEnum<PermissionMode>()
+            .HasPostgresEnum<Rating>();
 
         builder.Entity<Book>()
             .HasIndex(b => new { b.GuildId, b.Title, b.Type })
