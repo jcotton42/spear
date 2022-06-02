@@ -6,11 +6,12 @@ using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Responders;
 using Remora.Discord.Commands.Services;
 using Remora.Discord.Gateway;
+using Remora.Discord.Gateway.Extensions;
 using Remora.Discord.Hosting.Extensions;
 using Remora.Rest.Core;
 using Spear.Commands;
-using Spear.Conditions;
 using Spear.Models;
+using Spear.Responders;
 using Spear.Services;
 
 var host = Host
@@ -23,7 +24,13 @@ var host = Host
         );
     })
     .ConfigureServices((hostContext, services) => {
-        services.Configure<DiscordGatewayClientOptions>(options => options.Intents = GatewayIntents.Guilds);
+        var appId = hostContext.Configuration["DiscordAppId"];
+        if(appId is not null) {
+            services.Configure<CommandResponderOptions>(options => options.Prefix = $"<@{appId}>");
+        }
+
+        services.Configure<DiscordGatewayClientOptions>(options =>
+            options.Intents = GatewayIntents.Guilds | GatewayIntents.GuildMessages);
         services.Configure<InteractionResponderOptions>(options => options.SuppressAutomaticResponses = true);
         var host = hostContext.Configuration["PgHost"];
         var database = hostContext.Configuration["PgDatabase"];
@@ -40,14 +47,16 @@ var host = Host
             .AddScoped<PromptService>();
 
         services
+            .AddResponder<RegistrationResponder>()
             .AddDiscordCommands(enableSlash: true)
-            .AddCondition<RequireRegisteredGuildCondition>()
+            .AddPreExecutionEvent<PreExecutionHandler>()
             .AddPostExecutionEvent<PostExecutionHandler>()
             .AddCommandTree()
-                .WithCommandGroup<AuthorizationCommands>()
-                .WithCommandGroup<GuildCommands>()
-                .WithCommandGroup<PromptCommands>()
-                .WithCommandGroup<MiscCommands>();
+                .WithCommandGroup<OldMan>()
+                .WithCommandGroup<OldMan.AuthorizationCommands>()
+                .WithCommandGroup<OldMan.GuildCommands>()
+                .WithCommandGroup<OldMan.MiscCommands>()
+                .WithCommandGroup<OldMan.PromptCommands>();
     })
     .Build();
 

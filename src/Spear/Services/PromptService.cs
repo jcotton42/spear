@@ -18,7 +18,9 @@ public class PromptService {
     }
 
     public async Task<Result<int>> AddPromptAsync(string suggestion, CancellationToken ct) {
-        if(!await _authorization.InvokerCanSubmitPromptsAsync(ct)) {
+        var queryCanSubmit = await _authorization.InvokerCanSubmitPromptsAsync(ct);
+        if(!queryCanSubmit.IsDefined(out var canSubmit)) return Result<int>.FromError(queryCanSubmit);
+        if(!canSubmit) {
             return new SpearPermissionDeniedError(
                 "You do not have permission to submit prompts",
                 Permission.SubmitPrompts
@@ -44,7 +46,9 @@ public class PromptService {
             return new NotFoundError($"No prompt found with ID {id}");
         }
 
-        if(!await _authorization.InvokerCanEditOrDeletePromptsAsync(prompt, ct)) {
+        var queryCanModify = await _authorization.InvokerCanEditOrDeletePromptsAsync(prompt, ct);
+        if(!queryCanModify.IsDefined(out var canModify)) return Result.FromError(queryCanModify);
+        if(!canModify) {
             return new SpearPermissionDeniedError("You cannot edit this prompt", Permission.ModeratePrompts);
         }
 
@@ -61,7 +65,9 @@ public class PromptService {
             return new NotFoundError($"No prompt found with ID {id}");
         }
 
-        if(!await _authorization.InvokerCanEditOrDeletePromptsAsync(prompt, ct)) {
+        var queryCanModify = await _authorization.InvokerCanEditOrDeletePromptsAsync(prompt, ct);
+        if(!queryCanModify.IsDefined(out var canModify)) return Result.FromError(queryCanModify);
+        if(!canModify) {
             return new SpearPermissionDeniedError("You cannot delete this prompt", Permission.ModeratePrompts);
         }
 

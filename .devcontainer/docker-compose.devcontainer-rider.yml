@@ -13,6 +13,9 @@ services:
     volumes:
       - ${HOME}/.cache/JetBrains:/home/vscode/.cache/JetBrains
       - ${HOME}/.config/JetBrains:/home/vscode/.config/JetBrains
+  db:
+    ports:
+      - "5432:5432"
   adminer:
     ports:
       - "8080:8080"

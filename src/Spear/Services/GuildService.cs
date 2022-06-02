@@ -1,38 +1,39 @@
-using EntityFramework.Exceptions.Common;
 using Microsoft.EntityFrameworkCore;
-using Remora.Discord.Commands.Contexts;
-using Remora.Results;
+using Remora.Rest.Core;
 using Spear.Models;
 
 namespace Spear.Services;
 
 public class GuildService {
-    private readonly ICommandContext _commandContext;
+    private static readonly EventId RegisteredGuildEventId = new(1, "RegisteredGuild");
+    private static readonly EventId UpdatedGuildEventId = new(2, "UpdatedGuild");
+
+    private readonly ILogger _logger;
     private readonly SpearContext _spearContext;
 
-    public GuildService(ICommandContext commandContext, SpearContext spearContext) {
-        _commandContext = commandContext;
+    public GuildService(ILogger<GuildService> logger, SpearContext spearContext) {
+        _logger = logger;
         _spearContext = spearContext;
     }
 
-    public async Task<Result> RegisterGuildAsync(CancellationToken ct) {
-        _spearContext.Guilds.Add(new Guild {
-            Id = _commandContext.GuildID.Value,
-        });
-
-        try {
+    public async Task UpsertGuildAsync(Snowflake id, string name, CancellationToken ct) {
+        var guild = await _spearContext.Guilds.FindAsync(new object[] {id}, ct);
+        if(guild is null) {
+            guild = new Guild {Id = id, Name = name};
+            _spearContext.Guilds.Add(guild);
             await _spearContext.SaveChangesAsync(ct);
-        } catch(UniqueConstraintException) {
-            return new InvalidOperationError("This guild is already registered");
+            _logger.LogInformation(RegisteredGuildEventId, "Registered guild {Name} ({Id})", name, id);
+        } else if(guild.Name != name) {
+            guild.Name = name;
+            await _spearContext.SaveChangesAsync(ct);
+            _logger.LogInformation(UpdatedGuildEventId, "Updated guild {Name} ({Id})", name, id);
         }
-
-        return Result.FromSuccess();
     }
 
-    public async Task<bool> IsGuildRegisteredAsync(CancellationToken ct) {
+    public async Task<bool> IsGuildRegisteredAsync(Snowflake id, CancellationToken ct) {
         var guild = await _spearContext.Guilds
             .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == _commandContext.GuildID.Value, ct);
+            .FirstOrDefaultAsync(g => g.Id == id, ct);
         return guild is not null;
     }
 }
