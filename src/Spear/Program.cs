@@ -45,6 +45,7 @@ var host = Host
         ));
 
         services
+            .AddLazyCache()
             .AddScoped<AuthorizationService>()
             .AddScoped<BookService>()
             .AddScoped<GuildService>()

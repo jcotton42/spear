@@ -1,4 +1,5 @@
 using EntityFramework.Exceptions.Common;
+using LazyCache;
 using Microsoft.EntityFrameworkCore;
 using Remora.Rest.Core;
 using Remora.Results;
@@ -9,10 +10,12 @@ namespace Spear.Services;
 
 public class BookService {
     private readonly AuthorizationService _authorization;
+    private readonly IAppCache _cache;
     private readonly SpearContext _context;
 
-    public BookService(AuthorizationService authorization, SpearContext context) {
+    public BookService(AuthorizationService authorization, IAppCache cache, SpearContext context) {
         _authorization = authorization;
+        _cache = cache;
         _context = context;
     }
 
@@ -63,17 +66,17 @@ public class BookService {
         _context.Books.Add(book);
         try {
             await _context.SaveChangesAsync(ct);
+            // TODO need to handle global book additions
+            if(guild is not null) _cache.Remove(CacheKeys.GuildBooks(guild.Value));
             return book.Id;
         } catch(UniqueConstraintException) {
-            return new InvalidOperationError($"I've already got that book!");
+            return new InvalidOperationError("I've already got that book!");
         }
     }
 
     public async Task<List<string>> GetAllGuildBooksOfTypeAsync(Snowflake guild, BookType type, CancellationToken ct) {
-        return await _context.Books
-            .Where(b => b.GuildId == guild && b.Type == type)
-            .Select(b => b.Title)
-            .ToListAsync(ct);
+        var books = await GetAllGuildBooksAsync(guild, ct);
+        return books.Where(b => b.Type == type).Select(b => b.Title).ToList();
     }
 
     /// <summary>
@@ -114,22 +117,14 @@ public class BookService {
     /// </para>
     /// </returns>
     public async Task<Result<string>> GetRandomGuildBookOfType(BookType type, Snowflake guild, CancellationToken ct) {
-        // TODO cache this
-        var ids = await _context.Books
-            .Where(b => b.GuildId == guild && b.Type == type)
-            .Select(b => b.Id)
-            .ToListAsync(ct);
+        var books = (await GetAllGuildBooksAsync(guild, ct)).Where(b => b.Type == type).ToList();
 
-        if(ids.Any()) {
-            var id = ids[Random.Shared.Next(ids.Count)];
-            var book = await _context.Books
-                .SingleAsync(b => b.Id == id, ct);
-            return book.Title;
-        } else {
-            return new NotFoundError(
-                $"No book of type {type} was found for guild {guild}."
-            );
+        if(books.Any()) {
+            return books[Random.Shared.Next(books.Count)].Title;
         }
+        return new NotFoundError(
+            $"No book of type {type} was found for guild {guild}."
+        );
     }
 
     /// <summary>
@@ -161,11 +156,16 @@ public class BookService {
         var affected = await _context.SaveChangesAsync(ct);
 
         if(affected > 0) {
+            _cache.Remove(CacheKeys.GuildBooks(guild));
             return affected;
-        } else {
-            return new NotFoundError(
-                $"No books matching title {title} and {type} were found for removal."
-            );
         }
+        return new NotFoundError(
+            $"No books matching title {title} and {type} were found for removal."
+        );
+    }
+
+    private async Task<List<Book>> GetAllGuildBooksAsync(Snowflake guild, CancellationToken ct) {
+        return await _cache.GetOrAddAsync(CacheKeys.GuildBooks(guild), () =>
+            _context.Books.AsNoTracking().Where(b => b.GuildId == guild).ToListAsync(ct));
     }
 }
