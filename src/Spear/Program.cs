@@ -10,6 +10,7 @@ using Remora.Discord.Gateway.Extensions;
 using Remora.Discord.Hosting.Extensions;
 using Remora.Rest.Core;
 using Spear.Commands;
+using Spear.Completers;
 using Spear.Models;
 using Spear.Responders;
 using Spear.Services;
@@ -57,9 +58,12 @@ var host = Host
             .AddCommandTree()
                 .WithCommandGroup<OldMan>()
                 .WithCommandGroup<OldMan.AuthorizationCommands>()
+                .WithCommandGroup<OldMan.BookCommands>()
                 .WithCommandGroup<OldMan.GuildCommands>()
                 .WithCommandGroup<OldMan.MiscCommands>()
-                .WithCommandGroup<OldMan.PromptCommands>();
+                .WithCommandGroup<OldMan.PromptCommands>()
+            .Finish()
+            .AddAutocompleteProvider<BookTitleCompleter>();
     })
     .Build();
 

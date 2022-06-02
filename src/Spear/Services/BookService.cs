@@ -3,13 +3,16 @@ using Microsoft.EntityFrameworkCore;
 using Remora.Rest.Core;
 using Remora.Results;
 using Spear.Models;
+using Spear.Results;
 
 namespace Spear.Services;
 
 public class BookService {
+    private readonly AuthorizationService _authorization;
     private readonly SpearContext _context;
 
-    public BookService(SpearContext context) {
+    public BookService(AuthorizationService authorization, SpearContext context) {
+        _authorization = authorization;
         _context = context;
     }
 
@@ -18,6 +21,7 @@ public class BookService {
     /// </summary>
     /// <param name="title">The book's title.</param>
     /// <param name="type">The book's type.</param>
+    /// <param name="rating">The book's rating.</param>
     /// <param name="guild">The snowflake of the guild to add the book for.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>
@@ -29,13 +33,14 @@ public class BookService {
     /// existed for that guild.
     /// </para>
     /// </returns>
-    public Task<Result<int>> AddGuildBookAsync(string title, BookType type, Snowflake guild, CancellationToken ct) => AddBookAsync(title, type, guild, ct);
+    public Task<Result<int>> AddGuildBookAsync(string title, BookType type, Rating rating, Snowflake guild, CancellationToken ct) => AddBookAsync(title, type, rating, guild, ct);
 
     /// <summary>
     /// Adds a book available across all guilds.
     /// </summary>
     /// <param name="title">The book's title.</param>
     /// <param name="type">The book's type.</param>
+    /// <param name="rating">The book's rating.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>
     /// <para>
@@ -45,19 +50,30 @@ public class BookService {
     /// A <see cref="Result{TEntity}"/> with an error of <see cref="InvalidOperationError"/> if the book already existed.
     /// </para>
     /// </returns>
-    public Task<Result<int>> AddGlobalBookAsync(string title, BookType type, CancellationToken ct) => AddBookAsync(title, type, null, ct);
+    public Task<Result<int>> AddGlobalBookAsync(string title, BookType type, Rating rating, CancellationToken ct) => AddBookAsync(title, type, rating, null, ct);
 
-    private async Task<Result<int>> AddBookAsync(string title, BookType type, Snowflake? guild, CancellationToken ct) {
-        var book = new Book { Title = title, Type = type, GuildId = guild };
+    private async Task<Result<int>> AddBookAsync(string title, BookType type, Rating rating, Snowflake? guild, CancellationToken ct) {
+        var queryCanAdd = await _authorization.InvokerCanModerateBooksAsync(ct);
+        if(!queryCanAdd.IsDefined(out var canAdd)) return Result<int>.FromError(queryCanAdd);
+        if(!canAdd) {
+            return new SpearPermissionDeniedError("You can't add books.", Permission.ModerateBooks);
+        }
+
+        var book = new Book { Title = title, Type = type, Rating = rating, GuildId = guild };
         _context.Books.Add(book);
         try {
             await _context.SaveChangesAsync(ct);
             return book.Id;
         } catch(UniqueConstraintException) {
-            return new InvalidOperationError(
-                $"'{title}' with type {type} is already registered for guild {guild}"
-            );
+            return new InvalidOperationError($"I've already got that book!");
         }
+    }
+
+    public async Task<List<string>> GetAllGuildBooksOfTypeAsync(Snowflake guild, BookType type, CancellationToken ct) {
+        return await _context.Books
+            .Where(b => b.GuildId == guild && b.Type == type)
+            .Select(b => b.Title)
+            .ToListAsync(ct);
     }
 
     /// <summary>
@@ -132,6 +148,12 @@ public class BookService {
     /// </para>
     /// </returns>
     public async Task<Result<int>> RemoveBookFromGuildByTitleAsync(string title, BookType type, Snowflake guild, CancellationToken ct) {
+        var queryCanRemove = await _authorization.InvokerCanModerateBooksAsync(ct);
+        if(!queryCanRemove.IsDefined(out var canRemove)) return Result<int>.FromError(queryCanRemove);
+        if(!canRemove) {
+            return new SpearPermissionDeniedError("You can't remove books.", Permission.ModerateBooks);
+        }
+
         var books = await _context.Books
             .Where(b => b.Title == title && b.Type == type && b.GuildId == guild)
             .ToListAsync(ct);
