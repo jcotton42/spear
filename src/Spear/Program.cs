@@ -16,6 +16,9 @@ using Spear.Services;
 
 var host = Host
     .CreateDefaultBuilder(args)
+    .ConfigureAppConfiguration(config => {
+        config.AddKeyPerFile("/run/secrets", optional: true);
+    })
     .AddDiscordService(services => {
         var config = services.GetRequiredService<IConfiguration>();
 
