@@ -127,7 +127,13 @@ public class AuthorizationService {
     /// </para>
     /// </remarks>
     private async Task<Result<bool>> InvokerHasPermissionAsync(Permission permission, bool @default, CancellationToken ct) {
-        if(!_commandContext.GuildID.IsDefined(out var guildId)) return false;
+        if(!_commandContext.GuildID.IsDefined(out var guildId)) {
+            return new InvalidOperationError("Commands outside of guilds may not mandate permissions");
+        }
+
+        var getGuild = await _guildApi.GetGuildAsync(guildId, ct: ct);
+        if(!getGuild.IsDefined(out var guild)) return Result<bool>.FromError(getGuild);
+        if(guild.OwnerID == _commandContext.User.ID) return true;
 
         var get = await GetInvokerRolesAndPermissionsAsync(ct);
         if(!get.IsDefined(out var rp)) return Result<bool>.FromError(get);
