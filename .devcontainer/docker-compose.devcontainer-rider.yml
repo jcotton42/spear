@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  spear:
+    image: spear-devenv-rider
+    build:
+      target: rider
+    environment:
+      - SSH_USERNAME=vscode
+      - SSH_PASSWORD=vscode
+    ports:
+      - "2222:22"
+    volumes:
+      - ${HOME}/.cache/JetBrains:/home/vscode/.cache/JetBrains
+      - ${HOME}/.config/JetBrains:/home/vscode/.config/JetBrains
+  db:
+    ports:
+      - "5432:5432"
+  adminer:
+    ports:
+      - "8080:8080"
