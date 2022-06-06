@@ -20,8 +20,9 @@ namespace Spear.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "book_type", new[] { "book", "fic", "meme" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "permission", new[] { "moderate_prompts", "submit_prompts" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "permission", new[] { "moderate_prompts", "submit_prompts", "moderate_books" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "permission_mode", new[] { "allow", "deny" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "rating", new[] { "general", "teen", "mature", "explicit" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Spear.Models.Book", b =>
@@ -36,6 +37,10 @@ namespace Spear.Migrations
                     b.Property<ulong?>("GuildId")
                         .HasColumnType("numeric(20,0)")
                         .HasColumnName("guild_id");
+
+                    b.Property<Rating>("Rating")
+                        .HasColumnType("rating")
+                        .HasColumnName("rating");
 
                     b.Property<string>("Title")
                         .IsRequired()

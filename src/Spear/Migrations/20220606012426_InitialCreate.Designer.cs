@@ -11,8 +11,8 @@ using Spear.Models;
 namespace Spear.Migrations
 {
     [DbContext(typeof(SpearContext))]
-    [Migration("20220523025922_Books")]
-    partial class Books
+    [Migration("20220606012426_InitialCreate")]
+    partial class InitialCreate
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -22,6 +22,9 @@ namespace Spear.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "book_type", new[] { "book", "fic", "meme" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "permission", new[] { "moderate_prompts", "submit_prompts", "moderate_books" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "permission_mode", new[] { "allow", "deny" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "rating", new[] { "general", "teen", "mature", "explicit" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Spear.Models.Book", b =>
@@ -36,6 +39,10 @@ namespace Spear.Migrations
                     b.Property<ulong?>("GuildId")
                         .HasColumnType("numeric(20,0)")
                         .HasColumnName("guild_id");
+
+                    b.Property<Rating>("Rating")
+                        .HasColumnType("rating")
+                        .HasColumnName("rating");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -62,10 +69,59 @@ namespace Spear.Migrations
                         .HasColumnType("numeric(20,0)")
                         .HasColumnName("id");
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
                     b.HasKey("Id")
                         .HasName("pk_guilds");
 
                     b.ToTable("guilds", (string)null);
+                });
+
+            modelBuilder.Entity("Spear.Models.PermissionDefault", b =>
+                {
+                    b.Property<ulong>("GuildId")
+                        .HasColumnType("numeric(20,0)")
+                        .HasColumnName("guild_id");
+
+                    b.Property<Permission>("Permission")
+                        .HasColumnType("permission")
+                        .HasColumnName("permission");
+
+                    b.Property<PermissionMode>("Mode")
+                        .HasColumnType("permission_mode")
+                        .HasColumnName("mode");
+
+                    b.HasKey("GuildId", "Permission")
+                        .HasName("pk_permission_defaults");
+
+                    b.ToTable("permission_defaults", (string)null);
+                });
+
+            modelBuilder.Entity("Spear.Models.PermissionEntry", b =>
+                {
+                    b.Property<ulong>("GuildId")
+                        .HasColumnType("numeric(20,0)")
+                        .HasColumnName("guild_id");
+
+                    b.Property<ulong>("RoleId")
+                        .HasColumnType("numeric(20,0)")
+                        .HasColumnName("role_id");
+
+                    b.Property<Permission>("Permission")
+                        .HasColumnType("permission")
+                        .HasColumnName("permission");
+
+                    b.Property<PermissionMode>("Mode")
+                        .HasColumnType("permission_mode")
+                        .HasColumnName("mode");
+
+                    b.HasKey("GuildId", "RoleId", "Permission")
+                        .HasName("pk_permission_entries");
+
+                    b.ToTable("permission_entries", (string)null);
                 });
 
             modelBuilder.Entity("Spear.Models.Prompt", b =>
@@ -107,6 +163,26 @@ namespace Spear.Migrations
                         .HasConstraintName("fk_books_guilds_guild_id");
                 });
 
+            modelBuilder.Entity("Spear.Models.PermissionDefault", b =>
+                {
+                    b.HasOne("Spear.Models.Guild", null)
+                        .WithMany("PermissionDefaults")
+                        .HasForeignKey("GuildId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_permission_defaults_guilds_guild_id");
+                });
+
+            modelBuilder.Entity("Spear.Models.PermissionEntry", b =>
+                {
+                    b.HasOne("Spear.Models.Guild", null)
+                        .WithMany("PermissionEntries")
+                        .HasForeignKey("GuildId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_permission_entries_guilds_guild_id");
+                });
+
             modelBuilder.Entity("Spear.Models.Prompt", b =>
                 {
                     b.HasOne("Spear.Models.Guild", null)
@@ -120,6 +196,10 @@ namespace Spear.Migrations
             modelBuilder.Entity("Spear.Models.Guild", b =>
                 {
                     b.Navigation("Books");
+
+                    b.Navigation("PermissionDefaults");
+
+                    b.Navigation("PermissionEntries");
 
                     b.Navigation("Prompts");
                 });
