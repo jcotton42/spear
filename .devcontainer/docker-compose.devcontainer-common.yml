@@ -12,9 +12,11 @@ services:
         NODE_VERSION: "none"
     environment:
       - PgPassword=postgres
+    init: true
     volumes:
       - .:/workspace:cached
       - ${HOME}/.microsoft/usersecrets:/home/vscode/.microsoft/usersecrets
+      - /var/run/docker.sock:/var/run/docker-host.sock
 
   db:
     restart: unless-stopped
