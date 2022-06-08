@@ -12,6 +12,7 @@ using Remora.Discord.Commands.Services;
 using Remora.Discord.Gateway;
 using Remora.Discord.Gateway.Extensions;
 using Remora.Discord.Hosting.Extensions;
+using Remora.Discord.Interactivity.Extensions;
 using Remora.Rest.Core;
 using Spear.Commands;
 using Spear.Completers;
@@ -53,7 +54,8 @@ var host = Host
             .AddScoped<AuthorizationService>()
             .AddScoped<BookService>()
             .AddScoped<GuildService>()
-            .AddScoped<PromptService>();
+            .AddScoped<PromptService>()
+            .AddScoped<UserInputService>();
 
         services
             .AddResponder<RegistrationResponder>()
@@ -68,7 +70,9 @@ var host = Host
                 .WithCommandGroup<OldMan.MiscCommands>()
                 .WithCommandGroup<OldMan.PromptCommands>()
             .Finish()
-            .AddAutocompleteProvider<BookTitleCompleter>();
+            .AddAutocompleteProvider<BookTitleCompleter>()
+            .AddInteractivity()
+            .AddInteractiveEntity<UserInputService.UserInputResponderEntity>();
     })
     .Build();
 

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
+using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.Commands.Conditions;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
@@ -13,10 +14,12 @@ public partial class OldMan {
     public class PromptCommands : CommandGroup {
         private readonly FeedbackService _feedback;
         private readonly PromptService _prompt;
+        private readonly UserInputService _userInput;
 
-        public PromptCommands(FeedbackService feedback, PromptService prompt) {
+        public PromptCommands(FeedbackService feedback, PromptService prompt, UserInputService userInput) {
             _feedback = feedback;
             _prompt = prompt;
+            _userInput = userInput;
         }
 
         [Command("suggest")]
@@ -59,13 +62,31 @@ public partial class OldMan {
         public async Task<IResult> DeletePromptAsync(
             [Description("The prompt's ID")] int id
         ) {
-            var delete = await _prompt.DeletePromptAsync(id, CancellationToken);
+            var getPrompt = await _prompt.GetPromptByIdAsync(id, CancellationToken);
+            if(!getPrompt.IsDefined(out var prompt)) return getPrompt;
+
+            var getIndex = await _userInput.RequestInputWithButtonsAsync(
+                $"Are you sure you want to delete this prompt?\n>>> {prompt.Text}",
+                new[] {
+                    new Button("Delete", ButtonComponentStyle.Danger),
+                    new Button("Cancel", ButtonComponentStyle.Secondary)
+                },
+                CancellationToken
+            );
+            if(!getIndex.IsDefined(out var index)) return getIndex;
+
+            if(index != 0) {
+                return await _feedback.SendContextualNeutralAsync("The prompt lives. For now.", ct: CancellationToken);
+            }
+
+            var delete = await _prompt.DeletePromptAsync(prompt, CancellationToken);
             if(!delete.IsSuccess) return delete;
 
             return await _feedback.SendContextualSuccessAsync(
                 "I have deleted the prompt.",
                 ct: CancellationToken
             );
+
         }
 
         [Command("prompt")]

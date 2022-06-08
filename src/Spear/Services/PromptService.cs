@@ -58,13 +58,7 @@ public class PromptService {
         return Result.FromSuccess();
     }
 
-    public async Task<Result> DeletePromptAsync(int id, CancellationToken ct) {
-        var prompt = await _spearContext.Prompts
-            .FirstOrDefaultAsync(p => p.Id == id && p.GuildId == _commandContext.GuildID.Value, ct);
-        if(prompt is null) {
-            return new NotFoundError($"No prompt found with ID {id}");
-        }
-
+    public async Task<Result> DeletePromptAsync(Prompt prompt, CancellationToken ct) {
         var queryCanModify = await _authorization.InvokerCanEditOrDeletePromptsAsync(prompt, ct);
         if(!queryCanModify.IsDefined(out var canModify)) return Result.FromError(queryCanModify);
         if(!canModify) {
@@ -75,6 +69,14 @@ public class PromptService {
         await _spearContext.SaveChangesAsync(ct);
 
         return Result.FromSuccess();
+    }
+
+    public async Task<Result<Prompt>> GetPromptByIdAsync(int id, CancellationToken ct) {
+        var prompt = await _spearContext.Prompts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == id && p.GuildId == _commandContext.GuildID.Value, ct);
+        if(prompt is null) return new NotFoundError($"No prompt found with ID {id}");
+        return prompt;
     }
 
     public async Task<Result<Prompt>> GetRandomPromptAsync(CancellationToken ct) {
