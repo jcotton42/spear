@@ -94,4 +94,19 @@ public class PromptService {
             .AsNoTracking()
             .SingleAsync(p => p.Id == id, ct);
     }
+
+    public async Task<Result<List<Prompt>>> SearchForPromptsAsync(string searchTerm, int limit, CancellationToken ct) {
+        var prompts = await _spearContext.Prompts
+            .AsNoTracking()
+            .Where(p => p.GuildId == _commandContext.GuildID.Value && EF.Functions.ILike(p.Text, $"%{searchTerm}%"))
+            .OrderBy(p => p.Id)
+            .Take(limit)
+            .ToListAsync(ct);
+
+        if(!prompts.Any()) {
+            return new NotFoundError("No matching prompts were found");
+        }
+
+        return prompts;
+    }
 }
