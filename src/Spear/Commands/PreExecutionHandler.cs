@@ -17,8 +17,9 @@ public class PreExecutionHandler : IPreExecutionEvent {
 
     public async Task<Result> BeforeExecutionAsync(ICommandContext context, CancellationToken ct) {
         var calledMeOld = context switch {
-            InteractionContext ic => ic.Data.Name == "oldman",
-            MessageContext mc => mc.Message.Content.Value[mc.Message.Content.Value.IndexOf(' ')..].TrimStart().StartsWith("oldman"),
+            InteractionContext ic => ic.Data.Name.Value.Equals("oldman", StringComparison.OrdinalIgnoreCase),
+            MessageContext mc => mc.Message.Content.Value[mc.Message.Content.Value.IndexOf(' ')..].TrimStart()
+                .StartsWith("oldman", StringComparison.OrdinalIgnoreCase),
             _ => false,
         };
         if(!calledMeOld) {
