@@ -9,11 +9,12 @@ using Spear.Services;
 namespace Spear.Completers;
 
 public class BookTitleCompleter : IAutocompleteProvider {
-    private readonly BookService _books;
-    private readonly ICommandContext _commandContext;
     public const string Identity = "autocomplete::book_titles";
 
-    string IAutocompleteProvider.Identity => "autocomplete::book_titles";
+    private readonly BookService _books;
+    private readonly ICommandContext _commandContext;
+
+    string IAutocompleteProvider.Identity => Identity;
 
     public BookTitleCompleter(BookService books, ICommandContext commandContext) {
         _books = books;
@@ -32,7 +33,7 @@ public class BookTitleCompleter : IAutocompleteProvider {
             return Array.Empty<IApplicationCommandOptionChoice>();
         }
 
-        var books = await _books.GetAllGuildBooksOfTypeAsync(guildId, type, CancellationToken.None);
+        var books = await _books.GetAllGuildBooksOfTypeAsync(guildId, type, ct);
 
         return books
             .OrderByDescending(book => Fuzz.Ratio(userInput, book))

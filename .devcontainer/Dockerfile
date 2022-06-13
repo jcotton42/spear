@@ -6,6 +6,11 @@ ENV NUGET_XMLDOC_MODE=none
 ARG NODE_VERSION="none"
 RUN if [ "${NODE_VERSION}" != "none" ]; then su vscode -c "umask 0002 && . /usr/local/share/nvm/nvm.sh && nvm install ${NODE_VERSION} 2>&1"; fi
 
+COPY library-scripts/docker-debian.sh /tmp/library-scripts/
+ENV DOCKER_BUILDKIT=1
+RUN apt-get update && bash /tmp/library-scripts/docker-debian.sh
+ENTRYPOINT ["/usr/local/share/docker-init.sh"]
+
 # [Optional] Uncomment this line to install global node packages.
 # RUN su vscode -c "source /usr/local/share/nvm/nvm.sh && npm install -g <your-package-here>" 2>&1
 
@@ -16,5 +21,4 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && systemctl enable ssh \
     && chmod +x /startup.sh
 
-STOPSIGNAL SIGKILL
 CMD ["/startup.sh"]
