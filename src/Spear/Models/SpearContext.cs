@@ -6,18 +6,27 @@ using Remora.Rest.Core;
 namespace Spear.Models;
 
 public class SpearContext : DbContext {
+    public DbSet<Author> Authors { get; set; } = null!;
+    public DbSet<AuthorProfile> AuthorProfiles { get; set; } = null!;
     public DbSet<Book> Books { get; set; } = null!;
     public DbSet<Guild> Guilds { get; set; } = null!;
     public DbSet<PermissionDefault> PermissionDefaults { get; set; } = null!;
     public DbSet<PermissionEntry> PermissionEntries { get; set; } = null!;
     public DbSet<Prompt> Prompts { get; set; } = null!;
+    public DbSet<Story> Stories { get; set; } = null!;
+    public DbSet<StoryReaction> StoryReactions { get; set; } = null!;
+    public DbSet<StoryUrl> StoryUrls { get; set; } = null!;
+    public DbSet<Tag> Tags { get; set; } = null!;
 
     static SpearContext() {
         NpgsqlConnection.GlobalTypeMapper
             .MapEnum<BookType>()
             .MapEnum<Permission>()
             .MapEnum<PermissionMode>()
-            .MapEnum<Rating>();
+            .MapEnum<Rating>()
+            .MapEnum<Reaction>()
+            .MapEnum<StoryStatus>()
+            .MapEnum<TagType>();
     }
 
     public SpearContext(DbContextOptions<SpearContext> options) : base(options) {}
@@ -36,13 +45,19 @@ public class SpearContext : DbContext {
 
     protected override void OnModelCreating(ModelBuilder builder) {
         builder
+            .HasPostgresExtension("pg_trgm");
+
+        builder
             .HasPostgresEnum<BookType>()
             .HasPostgresEnum<Permission>()
             .HasPostgresEnum<PermissionMode>()
-            .HasPostgresEnum<Rating>();
+            .HasPostgresEnum<Rating>()
+            .HasPostgresEnum<Reaction>()
+            .HasPostgresEnum<StoryStatus>()
+            .HasPostgresEnum<TagType>();
 
         builder.Entity<Book>()
-            .HasIndex(b => new { b.GuildId, b.Title, b.Type })
+            .HasIndex(b => new {b.GuildId, b.Title, b.Type})
             .IsUnique();
 
         builder.Entity<PermissionDefault>()
@@ -50,5 +65,21 @@ public class SpearContext : DbContext {
 
         builder.Entity<PermissionEntry>()
             .HasKey(pe => new {pe.GuildId, pe.RoleId, pe.Permission});
+
+        builder.Entity<Story>()
+            .HasIndex(s => s.Title)
+            .HasMethod("gin")
+            .HasOperators("gin_trgm_ops");
+
+        builder.Entity<StoryReaction>()
+            .HasKey(sr => new {sr.StoryId, sr.UserId});
+
+        builder.Entity<Tag>()
+            .HasIndex(t => new {t.Name, t.Type})
+            .IsUnique();
+        builder.Entity<Tag>()
+            .HasIndex(t => t.Name)
+            .HasMethod("gin")
+            .HasOperators("gin_trgm_ops");
     }
 }
