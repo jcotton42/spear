@@ -58,13 +58,7 @@ public class PromptService {
         return Result.FromSuccess();
     }
 
-    public async Task<Result> DeletePromptAsync(int id, CancellationToken ct) {
-        var prompt = await _spearContext.Prompts
-            .FirstOrDefaultAsync(p => p.Id == id && p.GuildId == _commandContext.GuildID.Value, ct);
-        if(prompt is null) {
-            return new NotFoundError($"No prompt found with ID {id}");
-        }
-
+    public async Task<Result> DeletePromptAsync(Prompt prompt, CancellationToken ct) {
         var queryCanModify = await _authorization.InvokerCanEditOrDeletePromptsAsync(prompt, ct);
         if(!queryCanModify.IsDefined(out var canModify)) return Result.FromError(queryCanModify);
         if(!canModify) {
@@ -75,6 +69,14 @@ public class PromptService {
         await _spearContext.SaveChangesAsync(ct);
 
         return Result.FromSuccess();
+    }
+
+    public async Task<Result<Prompt>> GetPromptByIdAsync(int id, CancellationToken ct) {
+        var prompt = await _spearContext.Prompts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == id && p.GuildId == _commandContext.GuildID.Value, ct);
+        if(prompt is null) return new NotFoundError($"No prompt found with ID {id}");
+        return prompt;
     }
 
     public async Task<Result<Prompt>> GetRandomPromptAsync(CancellationToken ct) {
@@ -91,5 +93,20 @@ public class PromptService {
         return await _spearContext.Prompts
             .AsNoTracking()
             .SingleAsync(p => p.Id == id, ct);
+    }
+
+    public async Task<Result<List<Prompt>>> SearchForPromptsAsync(string searchTerm, int limit, CancellationToken ct) {
+        var prompts = await _spearContext.Prompts
+            .AsNoTracking()
+            .Where(p => p.GuildId == _commandContext.GuildID.Value && EF.Functions.ILike(p.Text, $"%{searchTerm}%"))
+            .OrderBy(p => p.Id)
+            .Take(limit)
+            .ToListAsync(ct);
+
+        if(!prompts.Any()) {
+            return new NotFoundError("No matching prompts were found");
+        }
+
+        return prompts;
     }
 }
