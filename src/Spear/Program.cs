@@ -70,6 +70,7 @@ var host = Host
                 .WithCommandGroup<OldMan.GuildCommands>()
                 .WithCommandGroup<OldMan.MiscCommands>()
                 .WithCommandGroup<OldMan.PromptCommands>()
+                .WithCommandGroup<OldMan.StoryCommands>()
             .Finish()
             .AddAutocompleteProvider<BookTitleCompleter>()
             .AddInteractivity()
