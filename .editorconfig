@@ -1,15 +1,20 @@
 root = true
 # Remove the line below if you want to inherit .editorconfig settings from higher directories
 
-# C# files
-[*.cs]
-
-#### Core EditorConfig Options ####
-
+[*]
 # Indentation and spacing
 indent_size = 4
 indent_style = space
 tab_width = 4
+
+[*.{csproj,json,xml,yaml,yml}]
+indent_size = 2
+tab_width = 2
+
+# C# files
+[*.cs]
+
+#### Core EditorConfig Options ####
 
 # New line preferences
 insert_final_newline = false
@@ -276,18 +281,3 @@ resharper_redundant_base_qualifier_highlighting = warning
 resharper_suggest_var_or_type_built_in_types_highlighting = hint
 resharper_suggest_var_or_type_elsewhere_highlighting = hint
 resharper_suggest_var_or_type_simple_types_highlighting = hint
-
-[*.{appxmanifest,axml,build,c,c++,cc,cginc,compute,config,cp,cpp,cshtml,csproj,cu,cuh,cxx,dbml,discomap,dtd,fx,fxh,h,hh,hlsl,hlsli,hlslinc,hpp,htm,html,hxx,inc,inl,ino,ipp,jsproj,lsproj,mpp,mq4,mq5,mqh,njsproj,nuspec,proj,props,proto,razor,resw,resx,StyleCop,targets,tasks,tpp,usf,ush,vbproj,xml,xsd}]
-indent_style = tab
-indent_size = tab
-tab_width = 4
-
-[*.{asax,ascx,aspx,axaml,cs,css,js,jsx,master,paml,skin,ts,tsx,vb,xaml,xamlx,xoml}]
-indent_style = space
-indent_size = 4
-tab_width = 4
-
-[*.{json,resjson}]
-indent_style = space
-indent_size = 2
-tab_width = 2
