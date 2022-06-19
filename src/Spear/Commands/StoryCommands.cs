@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using Microsoft.EntityFrameworkCore;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.Commands.Conditions;
@@ -62,6 +63,17 @@ public partial class OldMan {
             _spearContext.Authors.Add(authorModel);
             await _spearContext.SaveChangesAsync(CancellationToken);
 
+            var existingTags = await _spearContext.Tags.Where(tag =>
+                (tag.Type == TagType.Fandom && fandomList.Contains(tag.Name))
+                || (tag.Type == TagType.Ship && shipList.Contains(tag.Name))
+                || (tag.Type == TagType.General && tagList.Contains(tag.Name))
+            ).ToListAsync(CancellationToken);
+
+            var tagsToSave = new HashSet<Tag>(existingTags);
+            foreach(var fandom in fandomList) tagsToSave.Add(new Tag {Name = fandom, Type = TagType.Fandom});
+            foreach(var ship in shipList) tagsToSave.Add(new Tag {Name = ship, Type = TagType.Ship});
+            foreach(var tag in tagList) tagsToSave.Add(new Tag {Name = tag, Type = TagType.General});
+
             var story = new Story {
                 AuthorId = authorModel.Id,
                 GuildId = _commandContext.GuildID.Value,
@@ -70,13 +82,9 @@ public partial class OldMan {
                 Summary = summary,
                 Title = title,
                 Reactions =
-                    new List<StoryReaction> {new() {UserId = _commandContext.User.ID, Reaction = Reaction.Like}},
+                    new HashSet<StoryReaction> {new() {UserId = _commandContext.User.ID, Reaction = Reaction.Like}},
                 Urls = urlList.Select(u => new StoryUrl {Url = u}).ToList(),
-                Tags = tagList
-                    .Select(t => new Tag {Name = t, Type = TagType.General})
-                    .Concat(shipList.Select(s => new Tag {Name = s, Type = TagType.Ship}))
-                    .Concat(fandomList.Select(f => new Tag {Name = f, Type = TagType.Fandom}))
-                    .ToList()
+                Tags = tagsToSave,
             };
             _spearContext.Stories.Add(story);
             await _spearContext.SaveChangesAsync(CancellationToken);
