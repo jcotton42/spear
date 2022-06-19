@@ -6,6 +6,6 @@ public class Author {
     public int Id { get; set; }
     public Snowflake GuildId { get; set; }
 
-    public List<AuthorProfile> Profiles { get; set; } = null!;
-    public List<Story> Stories { get; set; } = null!;
+    public ICollection<AuthorProfile> Profiles { get; set; } = null!;
+    public ICollection<Story> Stories { get; set; } = null!;
 }
