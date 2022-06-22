@@ -1,26 +1,23 @@
 using System.ComponentModel;
-using Microsoft.EntityFrameworkCore;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.Commands.Conditions;
-using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
 using Spear.Models;
+using Spear.Services;
 
 namespace Spear.Commands;
 
 public partial class OldMan {
     [RequireContext(ChannelContext.Guild)]
     public class StoryCommands : CommandGroup {
-        private readonly ICommandContext _commandContext;
         private readonly FeedbackService _feedback;
-        private readonly SpearContext _spearContext;
+        private readonly StoryService _stories;
 
-        public StoryCommands(ICommandContext commandContext, FeedbackService feedback, SpearContext spearContext) {
-            _commandContext = commandContext;
+        public StoryCommands(FeedbackService feedback, StoryService stories) {
             _feedback = feedback;
-            _spearContext = spearContext;
+            _stories = stories;
         }
 
         [Command("recommend")]
@@ -59,37 +56,11 @@ public partial class OldMan {
             var tagList = tags?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 ?.ToArray() ?? Array.Empty<string>();
 
-            var authorModel = new Author {GuildId = _commandContext.GuildID.Value};
-            _spearContext.Authors.Add(authorModel);
-            await _spearContext.SaveChangesAsync(CancellationToken);
+            var addStory = await _stories.RecommendStoryAsync(title, author, rating, status, fandomList, urlList,
+                shipList, tagList, summary, CancellationToken);
+            if(!addStory.IsDefined(out var story)) return addStory;
 
-            var existingTags = await _spearContext.Tags.Where(tag =>
-                (tag.Type == TagType.Fandom && fandomList.Contains(tag.Name))
-                || (tag.Type == TagType.Ship && shipList.Contains(tag.Name))
-                || (tag.Type == TagType.General && tagList.Contains(tag.Name))
-            ).ToListAsync(CancellationToken);
-
-            var tagsToSave = new HashSet<Tag>(existingTags);
-            foreach(var fandom in fandomList) tagsToSave.Add(new Tag {Name = fandom, Type = TagType.Fandom});
-            foreach(var ship in shipList) tagsToSave.Add(new Tag {Name = ship, Type = TagType.Ship});
-            foreach(var tag in tagList) tagsToSave.Add(new Tag {Name = tag, Type = TagType.General});
-
-            var story = new Story {
-                AuthorId = authorModel.Id,
-                GuildId = _commandContext.GuildID.Value,
-                Rating = rating,
-                Status = status,
-                Summary = summary,
-                Title = title,
-                Reactions =
-                    new HashSet<StoryReaction> {new() {UserId = _commandContext.User.ID, Reaction = Reaction.Like}},
-                Urls = urlList.Select(u => new StoryUrl {Url = u}).ToList(),
-                Tags = tagsToSave,
-            };
-            _spearContext.Stories.Add(story);
-            await _spearContext.SaveChangesAsync(CancellationToken);
-
-            return await _feedback.SendContextualNeutralAsync($"{title} added!", ct: CancellationToken);
+            return await _feedback.SendContextualNeutralAsync($"{title} #`{story.Id}` added!", ct: CancellationToken);
         }
     }
 }

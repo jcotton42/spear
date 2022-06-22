@@ -5,7 +5,7 @@ public class Tag : IEquatable<Tag> {
     public string Name { get; init; } = null!;
     public TagType Type { get; init; }
 
-    public ICollection<Story> Stories { get; set; } = null!;
+    public ICollection<Story> Stories { get; set; } = new HashSet<Story>();
 
     public bool Equals(Tag? other) {
         if (ReferenceEquals(null, other)) {

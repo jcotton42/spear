@@ -6,10 +6,10 @@ public class Guild {
     public Snowflake Id { get; set; }
     public string Name { get; set; } = null!;
 
-    public ICollection<Author> Authors { get; set; } = null!;
-    public ICollection<Book> Books { get; set; } = null!;
-    public ICollection<PermissionDefault> PermissionDefaults { get; set; } = null!;
-    public ICollection<PermissionEntry> PermissionEntries { get; set; } = null!;
-    public ICollection<Prompt> Prompts { get; set; } = null!;
-    public ICollection<Story> Stories { get; set; } = null!;
+    public ICollection<Author> Authors { get; set; } = new HashSet<Author>();
+    public ICollection<Book> Books { get; set; } = new HashSet<Book>();
+    public ICollection<PermissionDefault> PermissionDefaults { get; set; } = new HashSet<PermissionDefault>();
+    public ICollection<PermissionEntry> PermissionEntries { get; set; } = new HashSet<PermissionEntry>();
+    public ICollection<Prompt> Prompts { get; set; } = new HashSet<Prompt>();
+    public ICollection<Story> Stories { get; set; } = new HashSet<Story>();
 }

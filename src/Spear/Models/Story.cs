@@ -11,7 +11,7 @@ public class Story {
     public Rating Rating { get; set; }
     public StoryStatus Status { get; set; }
 
-    public ICollection<StoryReaction> Reactions { get; set; } = null!;
-    public ICollection<Tag> Tags { get; set; } = null!;
-    public ICollection<StoryUrl> Urls { get; set; } = null!;
+    public ICollection<StoryReaction> Reactions { get; set; } = new HashSet<StoryReaction>();
+    public ICollection<Tag> Tags { get; set; } = new HashSet<Tag>();
+    public ICollection<StoryUrl> Urls { get; set; } = new HashSet<StoryUrl>();
 }

@@ -56,6 +56,7 @@ var host = Host
             .AddScoped<BookService>()
             .AddScoped<GuildService>()
             .AddScoped<PromptService>()
+            .AddScoped<StoryService>()
             .AddScoped<UserInputService>();
 
         services
