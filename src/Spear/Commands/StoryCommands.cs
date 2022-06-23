@@ -3,6 +3,7 @@ using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.Commands.Conditions;
 using Remora.Discord.Commands.Feedback.Services;
+using Remora.Discord.Extensions.Embeds;
 using Remora.Results;
 using Spear.Models;
 using Spear.Services;
@@ -62,6 +63,28 @@ public partial class OldMan {
             if(!addStory.IsDefined(out var story)) return addStory;
 
             return await _feedback.SendContextualNeutralAsync($"{title} #`{story.Id}` added!", ct: CancellationToken);
+        }
+
+        [Command("random")]
+        [Description("Pulls a random story, excluding ones you've already responded to")]
+        public async Task<IResult> RandomAsync() {
+            var get = await _stories.GetRandomStoryAsync(CancellationToken);
+            if(!get.IsDefined(out var story)) return get;
+
+            var embed = new EmbedBuilder()
+                .WithAuthor(story.Author)
+                .WithTitle($"{story.Title} (#`{story.Id}`)")
+                .AddField("Rating", story.Rating.ToString(), inline: true).Entity
+                .AddField("Status", story.Status.ToString(), inline: true).Entity
+                .AddField("Fandoms", string.Join(", ", story.Fandoms.OrderBy(f => f)), inline: true).Entity
+                .AddField("Ships", string.Join(", ", story.Ships.OrderBy(s => s).DefaultIfEmpty("None")), inline: true).Entity
+                .AddField("Tags", string.Join(", ", story.Tags.OrderBy(t => t).DefaultIfEmpty("None")), inline: true).Entity
+                .AddField("\u200B", "\u200B", inline: true).Entity
+                .AddField("URLs", string.Join("\n", story.Urls.OrderBy(u => u))).Entity
+                .AddField("Summary", story.Summary ?? "None").Entity
+                .WithFooter($"{story.LikeCount} 👍/{story.IndifferentCount} 🤷/{story.DislikeCount} 👎");
+
+            return await _feedback.SendContextualEmbedAsync(embed.Build().Entity, ct: CancellationToken);
         }
     }
 }

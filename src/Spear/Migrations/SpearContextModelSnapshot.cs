@@ -437,7 +437,7 @@ namespace Spear.Migrations
 
             modelBuilder.Entity("Spear.Models.Story", b =>
                 {
-                    b.HasOne("Spear.Models.Author", null)
+                    b.HasOne("Spear.Models.Author", "Author")
                         .WithMany("Stories")
                         .HasForeignKey("AuthorId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -450,6 +450,8 @@ namespace Spear.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_stories_guilds_guild_id");
+
+                    b.Navigation("Author");
                 });
 
             modelBuilder.Entity("Spear.Models.StoryReaction", b =>

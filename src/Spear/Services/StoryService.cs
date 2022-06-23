@@ -7,6 +7,24 @@ using Spear.Results;
 
 namespace Spear.Services;
 
+public record StoryDto(
+    int Id,
+    string Title,
+    string? Summary,
+    string Author,
+    HashSet<Uri> Urls,
+    Rating Rating,
+    StoryStatus Status,
+    HashSet<string> Fandoms,
+    HashSet<string> Ships,
+    HashSet<string> Tags,
+    int LikeCount,
+    int DislikeCount,
+    int IndifferentCount
+);
+
+public record TagDto(string Name, TagType Type);
+
 public class StoryService {
     private readonly AuthorizationService _authorization;
     private readonly ICommandContext _commandContext;
@@ -34,6 +52,36 @@ public class StoryService {
         _authorization = authorization;
         _commandContext = commandContext;
         _spearContext = spearContext;
+    }
+
+    public async Task<Result<StoryDto>> GetRandomStoryAsync(CancellationToken ct) {
+        var ids = await _spearContext.Stories
+            .Where(s => s.GuildId == _commandContext.GuildID.Value)
+            .Select(s => s.Id)
+            .ToListAsync(ct);
+        if(!ids.Any()) {
+            return new NotFoundError("No stories are available for this guild");
+        }
+
+        var id = ids[Random.Shared.Next(ids.Count)];
+        return await _spearContext.Stories
+            .Where(story => story.Id == id)
+            .Select(story => new StoryDto(
+                story.Id,
+                story.Title,
+                story.Summary,
+                story.Author.Name,
+                story.Urls.Select(u => u.Url).ToHashSet(),
+                story.Rating,
+                story.Status,
+                story.Tags.Where(tag => tag.Type == TagType.Fandom).Select(tag => tag.Name).ToHashSet(),
+                story.Tags.Where(tag => tag.Type == TagType.Ship).Select(tag => tag.Name).ToHashSet(),
+                story.Tags.Where(tag => tag.Type == TagType.General).Select(tag => tag.Name).ToHashSet(),
+                story.Reactions.Count(r => r.Reaction == Reaction.Like),
+                story.Reactions.Count(r => r.Reaction == Reaction.Dislike),
+                story.Reactions.Count(r => r.Reaction == Reaction.Indifferent)
+            ))
+            .FirstAsync(ct);
     }
 
     public async Task<Result<Story>> RecommendStoryAsync(string title, string author, Rating rating, StoryStatus status,
