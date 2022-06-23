@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Remora.Discord.Commands.Contexts;
 using Remora.Results;
@@ -11,6 +12,24 @@ public class StoryService {
     private readonly ICommandContext _commandContext;
     private readonly SpearContext _spearContext;
 
+    private static readonly (string SiteName, string DomainPattern, string UrlPattern, string ReplacementPattern)[] SitePatterns = {
+        (
+            "fanfiction.net",
+            @"^(www\.|m\.)?fanfiction\.net$",
+            @"(?in)^(https?://)?((www|m)\.)?fanfiction\.net/s/(?<id>\d+).*",
+            @"https://www.fanfiction.net/s/${id}"),
+        (
+            "archiveofourown.org",
+            @"^(www\.)?archiveofourown\.org$",
+            @"(?in)^(https?://)?(www\.)?archiveofourown\.org/works/(?<id>\d+).*",
+            @"https://archiveofourown.org/works/${id}"),
+        (
+            "fimfiction.net",
+            @"^(www\.)?fimfiction\.net$",
+            @"(?in)^(https?://)?(www\.)?fimfiction\.net/story/(?<id>\d+).*",
+            @"https://www.fimfiction.net/story/${id}"),
+    };
+
     public StoryService(AuthorizationService authorization, ICommandContext commandContext, SpearContext spearContext) {
         _authorization = authorization;
         _commandContext = commandContext;
@@ -18,7 +37,14 @@ public class StoryService {
     }
 
     public async Task<Result<Story>> RecommendStoryAsync(string title, string author, Rating rating, StoryStatus status,
-        string[] fandoms, Uri[] urls, string[] ships, string[] tags, string? summary, CancellationToken ct) {
+        string[] fandoms, string[] urls, string[] ships, string[] tags, string? summary, CancellationToken ct) {
+        var normalizedUrls = new List<(Uri Url, bool Normalized)>();
+        foreach(var url in urls) {
+            var normalize = NormalizeUrl(url);
+            if(!normalize.IsDefined(out var normalizedUrl)) return Result<Story>.FromError(normalize);
+            normalizedUrls.Add(normalizedUrl);
+        }
+
         if(!_commandContext.GuildID.IsDefined(out var guildId)) {
             return new InvalidOperationError("Cannot be used outside a guild");
         }
@@ -56,7 +82,7 @@ public class StoryService {
             Summary = summary,
             Title = title,
             Reactions = new HashSet<StoryReaction> {new() {UserId = _commandContext.User.ID, Reaction = Reaction.Like}},
-            Urls = urls.Select(u => new StoryUrl {Url = u}).ToHashSet(),
+            Urls = normalizedUrls.Select(u => new StoryUrl {IsNormalized = u.Normalized, Url = u.Url}).ToHashSet(),
             Tags = tagsToSave
         };
         _spearContext.Stories.Add(story);
@@ -65,5 +91,27 @@ public class StoryService {
         await _spearContext.SaveChangesAsync(ct);
 
         return story;
+    }
+
+    private static Result<(Uri, bool)> NormalizeUrl(string url) {
+        if(!Uri.TryCreate(url, UriKind.Absolute, out var uri)) {
+            if(!Uri.TryCreate($"https://{url}", UriKind.Absolute, out uri)) {
+                return new ArgumentInvalidError(nameof(url), "Could not parse URL");
+            }
+        }
+
+        foreach(var (siteName, domainPattern, urlPattern, replacementPattern) in SitePatterns) {
+            var domainMatch = Regex.Match(uri.Host, domainPattern, RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+            if(!domainMatch.Success) continue;
+
+            var urlMatch = Regex.Match(uri.AbsoluteUri, urlPattern, RegexOptions.CultureInvariant);
+            if(!urlMatch.Success) {
+                return new ArgumentInvalidError("url", $"{uri} appears to be a {siteName} URL but is malformed");
+            }
+
+            return (new Uri(urlMatch.Result(replacementPattern)), true);
+        }
+
+        return (uri, false);
     }
 }

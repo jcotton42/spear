@@ -10,6 +10,7 @@ using Spear.Services;
 namespace Spear.Commands;
 
 public partial class OldMan {
+    [Group("story")]
     [RequireContext(ChannelContext.Guild)]
     public class StoryCommands : CommandGroup {
         private readonly FeedbackService _feedback;
@@ -48,7 +49,7 @@ public partial class OldMan {
                 .ToArray();
             // TODO check length
             var urlList = urls.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(u => new Uri(u)).ToArray();
+                .ToArray();
             // TODO check length
             var shipList = ships?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 ?.ToArray() ?? Array.Empty<string>();
