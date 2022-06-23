@@ -4,4 +4,6 @@ public enum Permission {
     ModeratePrompts,
     SubmitPrompts,
     ModerateBooks,
+    SubmitStories,
+    ModerateStories,
 }

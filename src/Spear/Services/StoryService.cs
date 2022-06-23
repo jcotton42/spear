@@ -2,14 +2,17 @@ using Microsoft.EntityFrameworkCore;
 using Remora.Discord.Commands.Contexts;
 using Remora.Results;
 using Spear.Models;
+using Spear.Results;
 
 namespace Spear.Services;
 
 public class StoryService {
+    private readonly AuthorizationService _authorization;
     private readonly ICommandContext _commandContext;
     private readonly SpearContext _spearContext;
 
-    public StoryService(ICommandContext commandContext, SpearContext spearContext) {
+    public StoryService(AuthorizationService authorization, ICommandContext commandContext, SpearContext spearContext) {
+        _authorization = authorization;
         _commandContext = commandContext;
         _spearContext = spearContext;
     }
@@ -19,7 +22,14 @@ public class StoryService {
         if(!_commandContext.GuildID.IsDefined(out var guildId)) {
             return new InvalidOperationError("Cannot be used outside a guild");
         }
-        // TODO check for permissions
+
+        var queryCanSubmit = await _authorization.InvokerCanSubmitStoriesAsync(ct);
+        if(!queryCanSubmit.IsDefined(out var canSubmit)) return Result<Story>.FromError(queryCanSubmit);
+        if(!canSubmit) {
+            return Result<Story>.FromError(new SpearPermissionDeniedError("You can't submit stories",
+                Permission.SubmitStories));
+        }
+
         // TODO check for existing story that matches?
         var authorModel = await _spearContext.Authors
             .FirstOrDefaultAsync(a => a.GuildId == guildId && (a.Name == author || a.Profiles.Any(ap => ap.Pseud == author)), ct);

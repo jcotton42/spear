@@ -113,6 +113,12 @@ public class AuthorizationService {
     public Task<Result<bool>> InvokerCanModerateBooksAsync(CancellationToken ct) =>
         InvokerHasPermissionAsync(Permission.ModerateBooks, false, ct);
 
+    public Task<Result<bool>> InvokerCanSubmitStoriesAsync(CancellationToken ct) =>
+        InvokerHasPermissionAsync(Permission.SubmitStories, true, ct);
+
+    public Task<Result<bool>> InvokerCanModerateStoriesAsync(CancellationToken ct) =>
+        InvokerHasPermissionAsync(Permission.ModerateStories, true, ct);
+
     /// <summary>
     /// Returns whether the invoking user from the interaction context has the given <paramref name="permission"/>.
     /// </summary>
