@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.Commands.Contexts;
 using Remora.Results;
 using Spear.Models;
@@ -27,7 +28,9 @@ public record TagDto(string Name, TagType Type);
 
 public class StoryService {
     private readonly AuthorizationService _authorization;
+    private readonly IDiscordRestChannelAPI _channelApi;
     private readonly ICommandContext _commandContext;
+    private readonly GuildService _guild;
     private readonly SpearContext _spearContext;
 
     private static readonly (string SiteName, string DomainPattern, string UrlPattern, string ReplacementPattern)[] SitePatterns = {
@@ -48,19 +51,35 @@ public class StoryService {
             @"https://www.fimfiction.net/story/${id}"),
     };
 
-    public StoryService(AuthorizationService authorization, ICommandContext commandContext, SpearContext spearContext) {
+    public StoryService(AuthorizationService authorization, IDiscordRestChannelAPI channelApi,
+        ICommandContext commandContext, GuildService guild, SpearContext spearContext) {
         _authorization = authorization;
+        _channelApi = channelApi;
         _commandContext = commandContext;
+        _guild = guild;
         _spearContext = spearContext;
     }
 
     public async Task<Result<StoryDto>> GetRandomStoryAsync(CancellationToken ct) {
+        if(!_commandContext.GuildID.IsDefined(out var guildId)) {
+            return new InvalidOperationError("Cannot be used outside a guild");
+        }
+
+        var getGuildSettings = await _guild.GetSettingsAsync(guildId, ct);
+        if(!getGuildSettings.IsDefined(out var guildSettings)) return Result<StoryDto>.FromError(getGuildSettings);
+        var getChannel = await _channelApi.GetChannelAsync(_commandContext.ChannelID, ct);
+        if(!getChannel.IsDefined(out var channel)) return Result<StoryDto>.FromError(getChannel);
+        // TODO find out when IsNsfw is not defined
+        var limit = !channel.IsNsfw.HasValue || !channel.IsNsfw.Value
+            ? guildSettings.SafeChannelRatingCap
+            : guildSettings.NsfwChannelRatingCap;
+
         var ids = await _spearContext.Stories
-            .Where(s => s.GuildId == _commandContext.GuildID.Value)
+            .Where(s => s.GuildId == _commandContext.GuildID.Value && s.Rating <= limit)
             .Select(s => s.Id)
             .ToListAsync(ct);
         if(!ids.Any()) {
-            return new NotFoundError("No stories are available for this guild");
+            return new NotFoundError("No stories found matching your criteria");
         }
 
         var id = ids[Random.Shared.Next(ids.Count)];
@@ -86,15 +105,26 @@ public class StoryService {
 
     public async Task<Result<Story>> RecommendStoryAsync(string title, string author, Rating rating, StoryStatus status,
         string[] fandoms, string[] urls, string[] ships, string[] tags, string? summary, CancellationToken ct) {
+        if(!_commandContext.GuildID.IsDefined(out var guildId)) {
+            return new InvalidOperationError("Cannot be used outside a guild");
+        }
+
+        var getGuildSettings = await _guild.GetSettingsAsync(guildId, ct);
+        if(!getGuildSettings.IsDefined(out var guildSettings)) return Result<Story>.FromError(getGuildSettings);
+        var getChannel = await _channelApi.GetChannelAsync(_commandContext.ChannelID, ct);
+        if(!getChannel.IsDefined(out var channel)) return Result<Story>.FromError(getChannel);
+        // TODO find out when IsNsfw is not defined
+        var limit = !channel.IsNsfw.HasValue || !channel.IsNsfw.Value
+            ? guildSettings.SafeChannelRatingCap
+            : guildSettings.NsfwChannelRatingCap;
+
+        if(rating > limit) return new InvalidOperationError("That fic is too mature for this server");
+
         var normalizedUrls = new List<(Uri Url, bool Normalized)>();
         foreach(var url in urls) {
             var normalize = NormalizeUrl(url);
             if(!normalize.IsDefined(out var normalizedUrl)) return Result<Story>.FromError(normalize);
             normalizedUrls.Add(normalizedUrl);
-        }
-
-        if(!_commandContext.GuildID.IsDefined(out var guildId)) {
-            return new InvalidOperationError("Cannot be used outside a guild");
         }
 
         var queryCanSubmit = await _authorization.InvokerCanSubmitStoriesAsync(ct);

@@ -5,6 +5,8 @@ namespace Spear.Models;
 public class Guild {
     public Snowflake Id { get; set; }
     public string Name { get; set; } = null!;
+    public Rating NsfwChannelRatingCap { get; set; }
+    public Rating SafeChannelRatingCap { get; set; }
 
     public ICollection<Author> Authors { get; set; } = new HashSet<Author>();
     public ICollection<Book> Books { get; set; } = new HashSet<Book>();

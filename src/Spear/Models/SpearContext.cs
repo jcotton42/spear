@@ -60,6 +60,13 @@ public class SpearContext : DbContext {
             .HasIndex(b => new {b.GuildId, b.Title, b.Type})
             .IsUnique();
 
+        builder.Entity<Guild>()
+            .Property(g => g.SafeChannelRatingCap)
+            .HasDefaultValue(Rating.Teen);
+        builder.Entity<Guild>()
+            .Property(g => g.NsfwChannelRatingCap)
+            .HasDefaultValue(Rating.Mature);
+
         builder.Entity<PermissionDefault>()
             .HasKey(pd => new {pd.GuildId, pd.Permission});
 
