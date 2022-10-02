@@ -24,8 +24,6 @@ public record StoryDto(
     int IndifferentCount
 );
 
-public record TagDto(string Name, TagType Type);
-
 public class StoryService {
     private readonly AuthorizationService _authorization;
     private readonly IDiscordRestChannelAPI _channelApi;
