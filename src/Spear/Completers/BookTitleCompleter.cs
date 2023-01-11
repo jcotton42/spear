@@ -3,6 +3,7 @@ using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Autocomplete;
 using Remora.Discord.Commands.Contexts;
+using Remora.Discord.Commands.Extensions;
 using Spear.Models;
 using Spear.Services;
 
@@ -26,14 +27,14 @@ public class BookTitleCompleter : IAutocompleteProvider {
         string userInput,
         CancellationToken ct
     ) {
-        if(!_commandContext.GuildID.IsDefined(out var guildId)) return Array.Empty<IApplicationCommandOptionChoice>();
+        if(!_commandContext.TryGetGuildID(out var guildId)) return Array.Empty<IApplicationCommandOptionChoice>();
 
         var typeOption = options.First(o => o.Name == "type");
         if(!typeOption.Value.IsDefined(out var typeString) || !Enum.TryParse<BookType>(typeString.AsT0, out var type)) {
             return Array.Empty<IApplicationCommandOptionChoice>();
         }
 
-        var books = await _books.GetAllGuildBooksOfTypeAsync(guildId, type, ct);
+        var books = await _books.GetAllGuildBooksOfTypeAsync(guildId.Value, type, ct);
 
         return books
             .OrderByDescending(book => Fuzz.Ratio(userInput, book))

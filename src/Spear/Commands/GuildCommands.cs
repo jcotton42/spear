@@ -15,12 +15,12 @@ public partial class OldMan {
     [RequireContext(ChannelContext.Guild)]
     [RequireDiscordPermission(DiscordPermission.ManageGuild)]
     public class GuildCommands : CommandGroup {
-        private readonly ICommandContext _commandContext;
+        private readonly ITextCommandContext _commandContext;
         private readonly FeedbackService _feedback;
         private readonly GuildService _guild;
         private readonly IDiscordRestGuildAPI _guildApi;
 
-        public GuildCommands(ICommandContext commandContext, FeedbackService feedback, GuildService guild, IDiscordRestGuildAPI guildApi) {
+        public GuildCommands(ITextCommandContext commandContext, FeedbackService feedback, GuildService guild, IDiscordRestGuildAPI guildApi) {
             _commandContext = commandContext;
             _feedback = feedback;
             _guild = guild;

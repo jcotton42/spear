@@ -4,6 +4,7 @@ using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.Commands.Conditions;
 using Remora.Discord.Commands.Contexts;
+using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
 using Spear.Models;
@@ -17,10 +18,10 @@ public partial class OldMan {
     [RequireDiscordPermission(DiscordPermission.ManageGuild)]
     public class AuthorizationCommands : CommandGroup {
         private readonly AuthorizationService _authorization;
-        private readonly ICommandContext _commandContext;
+        private readonly ITextCommandContext _commandContext;
         private readonly FeedbackService _feedback;
 
-        public AuthorizationCommands(AuthorizationService authorization, ICommandContext commandContext,
+        public AuthorizationCommands(AuthorizationService authorization, ITextCommandContext commandContext,
             FeedbackService feedback) {
             _authorization = authorization;
             _commandContext = commandContext;

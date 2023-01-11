@@ -6,7 +6,6 @@ using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Conditions;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Services;
-using Remora.Discord.Interactivity.Services;
 using Remora.Discord.Pagination.Extensions;
 using Remora.Results;
 using Spear.Services;
@@ -16,17 +15,15 @@ namespace Spear.Commands;
 public partial class OldMan {
     [RequireContext(ChannelContext.Guild)]
     public class PromptCommands : CommandGroup {
-        private readonly ICommandContext _commandContext;
+        private readonly ITextCommandContext _commandContext;
         private readonly FeedbackService _feedback;
-        private readonly InteractiveMessageService _interactiveMessages;
         private readonly PromptService _prompt;
         private readonly UserInputService _userInput;
 
-        public PromptCommands(ICommandContext commandContext, FeedbackService feedback,
-            InteractiveMessageService interactiveMessages, PromptService prompt, UserInputService userInput) {
+        public PromptCommands(ITextCommandContext commandContext, FeedbackService feedback,
+            PromptService prompt, UserInputService userInput) {
             _commandContext = commandContext;
             _feedback = feedback;
-            _interactiveMessages = interactiveMessages;
             _prompt = prompt;
             _userInput = userInput;
         }
@@ -128,8 +125,8 @@ public partial class OldMan {
                     Description: $"Is this what you were looking for{creditLine}?\n#`{p.Id}`\n>>> {p.Text}");
             }).ToList();
 
-            return await _interactiveMessages.SendContextualPaginatedMessageAsync(
-                _commandContext.User.ID,
+            return await _feedback.SendContextualPaginatedMessageAsync(
+                _commandContext.Message.Author.Value.ID,
                 pages,
                 ct: CancellationToken
             );

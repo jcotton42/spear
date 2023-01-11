@@ -4,6 +4,7 @@ using Remora.Commands.Groups;
 using Remora.Discord.Commands.Attributes;
 using Remora.Discord.Commands.Conditions;
 using Remora.Discord.Commands.Contexts;
+using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
 using Spear.Completers;
@@ -16,10 +17,10 @@ public partial class OldMan {
     [RequireContext(ChannelContext.Guild)]
     public class BookCommands : CommandGroup {
         private readonly BookService _books;
-        private readonly ICommandContext _commandContext;
+        private readonly ITextCommandContext _commandContext;
         private readonly FeedbackService _feedback;
 
-        public BookCommands(BookService books, ICommandContext commandContext, FeedbackService feedback) {
+        public BookCommands(BookService books, ITextCommandContext commandContext, FeedbackService feedback) {
             _books = books;
             _commandContext = commandContext;
             _feedback = feedback;

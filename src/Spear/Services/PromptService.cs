@@ -8,10 +8,10 @@ namespace Spear.Services;
 
 public class PromptService {
     private readonly AuthorizationService _authorization;
-    private readonly ICommandContext _commandContext;
+    private readonly ITextCommandContext _commandContext;
     private readonly SpearContext _spearContext;
 
-    public PromptService(AuthorizationService authorization, ICommandContext commandContext, SpearContext spearContext) {
+    public PromptService(AuthorizationService authorization, ITextCommandContext commandContext, SpearContext spearContext) {
         _authorization = authorization;
         _commandContext = commandContext;
         _spearContext = spearContext;
@@ -29,7 +29,7 @@ public class PromptService {
 
         var prompt = new Prompt {
             GuildId = _commandContext.GuildID.Value,
-            Submitter = _commandContext.User.ID,
+            Submitter = _commandContext.Message.Author.Value.ID,
             Text = suggestion,
         };
 

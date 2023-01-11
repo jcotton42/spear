@@ -13,10 +13,10 @@ public partial class OldMan {
     [RequireContext(ChannelContext.Guild)]
     public class MiscCommands : CommandGroup {
         private readonly BookService _books;
-        private readonly ICommandContext _context;
+        private readonly ITextCommandContext _context;
         private readonly FeedbackService _feedback;
 
-        public MiscCommands(BookService books, ICommandContext context, FeedbackService feedback) {
+        public MiscCommands(BookService books, ITextCommandContext context, FeedbackService feedback) {
             _books = books;
             _context = context;
             _feedback = feedback;

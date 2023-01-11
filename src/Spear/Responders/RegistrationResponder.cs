@@ -11,7 +11,9 @@ public class RegistrationResponder : IResponder<IGuildCreate> {
     public RegistrationResponder(GuildService guild) => _guild = guild;
 
     public async Task<Result> RespondAsync(IGuildCreate gatewayEvent, CancellationToken ct) {
-        await _guild.UpsertGuildAsync(gatewayEvent.ID, gatewayEvent.Name, ct);
+        if(gatewayEvent.Guild.TryPickT0(out var guild, out _)) {
+            await _guild.UpsertGuildAsync(guild.ID, guild.Name, ct);
+        }
         return Result.FromSuccess();
     }
 }
