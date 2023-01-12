@@ -55,8 +55,7 @@ var host = Host
             .AddScoped<AuthorizationService>()
             .AddScoped<BookService>()
             .AddScoped<GuildService>()
-            .AddScoped<PromptService>()
-            .AddScoped<UserInputService>();
+            .AddScoped<PromptService>();
 
         services
             .AddResponder<RegistrationResponder>()
@@ -73,7 +72,6 @@ var host = Host
             .Finish()
             .AddAutocompleteProvider<BookTitleCompleter>()
             .AddInteractivity()
-            .AddInteractiveEntity<UserInputService.UserInputResponderEntity>()
             .AddPagination();
     })
     .Build();
@@ -98,15 +96,10 @@ if(!env.IsProduction()) {
 }
 
 var slashService = host.Services.GetRequiredService<SlashService>();
-var slashSupport = slashService.SupportsSlashCommands();
-if(slashSupport.IsSuccess) {
-    var updateSlash = await slashService.UpdateSlashCommandsAsync(testGuild);
-    if(!updateSlash.IsSuccess) {
-        logger.LogCritical("Failed to update slash commands: {Reason}", updateSlash.Error?.Message);
-        return 1;
-    }
-} else {
-    logger.LogCritical("The registered commands of the bot don't support slash commands: {Reason}", slashSupport.Error?.Message);
+var updateSlash = await slashService.UpdateSlashCommandsAsync(testGuild);
+if(!updateSlash.IsSuccess) {
+    logger.LogCritical("Failed to update slash commands: {Reason}", updateSlash.Error?.Message);
+    return 1;
 }
 
 await host.RunAsync();
@@ -141,7 +134,7 @@ void Migrate<TContext>(IHost host) where TContext : DbContext {
     ctx.Database.Migrate();
 
     // https://www.npgsql.org/efcore/mapping/enum.html#creating-your-database-enum
-    using var conn = (NpgsqlConnection)ctx.Database.GetDbConnection();
+    using var conn = (NpgsqlConnection) ctx.Database.GetDbConnection();
     conn.Open();
     conn.ReloadTypes();
 }
