@@ -13,6 +13,7 @@ using Remora.Discord.Gateway;
 using Remora.Discord.Gateway.Extensions;
 using Remora.Discord.Hosting.Extensions;
 using Remora.Discord.Interactivity.Extensions;
+using Remora.Discord.Interactivity.Services;
 using Remora.Discord.Pagination.Extensions;
 using Remora.Rest.Core;
 using Spear.Commands;
@@ -72,6 +73,8 @@ var host = Host
             .Finish()
             .AddAutocompleteProvider<BookTitleCompleter>()
             .AddInteractivity()
+            .AddInteractionGroup<PromptDeletePrompt>()
+            .AddSingleton(InMemoryDataService<string, TaskCompletionSource<string>>.Instance)
             .AddPagination();
     })
     .Build();
