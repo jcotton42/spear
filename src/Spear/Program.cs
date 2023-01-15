@@ -111,7 +111,7 @@ return 0;
 
 // https://medium.com/@floyd.may/ef-core-app-migrate-on-startup-d046afdba258
 // https://gist.github.com/Tim-Hodge/eea0601a14177c199fe60557eeeff31e
-void Migrate<TContext>(IHost host) where TContext : DbContext {
+static void Migrate<TContext>(IHost host) where TContext : DbContext {
     using var scope = host.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
     using var ctx = scope.ServiceProvider.GetRequiredService<TContext>();
 

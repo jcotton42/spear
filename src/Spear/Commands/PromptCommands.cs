@@ -11,6 +11,7 @@ using Remora.Discord.Interactivity;
 using Remora.Discord.Interactivity.Services;
 using Remora.Discord.Pagination.Extensions;
 using Remora.Results;
+using Spear.Extensions;
 using Spear.Services;
 
 namespace Spear.Commands;
@@ -18,12 +19,12 @@ namespace Spear.Commands;
 public partial class OldMan {
     [RequireContext(ChannelContext.Guild)]
     public class PromptCommands : CommandGroup {
-        private readonly ITextCommandContext _commandContext;
+        private readonly ICommandContext _commandContext;
         private readonly InMemoryDataService<string, TaskCompletionSource<string>> _data;
         private readonly FeedbackService _feedback;
         private readonly PromptService _prompt;
 
-        public PromptCommands(ITextCommandContext commandContext, InMemoryDataService<string, TaskCompletionSource<string>> data,
+        public PromptCommands(ICommandContext commandContext, InMemoryDataService<string, TaskCompletionSource<string>> data,
             FeedbackService feedback, PromptService prompt) {
             _commandContext = commandContext;
             _data = data;
@@ -148,7 +149,7 @@ public partial class OldMan {
             }).ToList();
 
             return await _feedback.SendContextualPaginatedMessageAsync(
-                _commandContext.Message.Author.Value.ID,
+                _commandContext.GetUserId(),
                 pages,
                 ct: CancellationToken
             );
