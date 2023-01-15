@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Remora.Discord.Commands.Contexts;
 using Remora.Results;
+using Spear.Extensions;
 using Spear.Models;
 using Spear.Results;
 
@@ -8,10 +9,10 @@ namespace Spear.Services;
 
 public class PromptService {
     private readonly AuthorizationService _authorization;
-    private readonly ITextCommandContext _commandContext;
+    private readonly ICommandContext _commandContext;
     private readonly SpearContext _spearContext;
 
-    public PromptService(AuthorizationService authorization, ITextCommandContext commandContext, SpearContext spearContext) {
+    public PromptService(AuthorizationService authorization, ICommandContext commandContext, SpearContext spearContext) {
         _authorization = authorization;
         _commandContext = commandContext;
         _spearContext = spearContext;
@@ -28,8 +29,8 @@ public class PromptService {
         }
 
         var prompt = new Prompt {
-            GuildId = _commandContext.GuildID.Value,
-            Submitter = _commandContext.Message.Author.Value.ID,
+            GuildId = _commandContext.GetGuildId(),
+            Submitter = _commandContext.GetUserId(),
             Text = suggestion,
         };
 
@@ -41,7 +42,7 @@ public class PromptService {
 
     public async Task<Result> EditPromptAsync(int id, string newSuggestion, CancellationToken ct) {
         var prompt = await _spearContext.Prompts
-            .FirstOrDefaultAsync(p => p.Id == id && p.GuildId == _commandContext.GuildID.Value, ct);
+            .FirstOrDefaultAsync(p => p.Id == id && p.GuildId == _commandContext.GetGuildId(), ct);
         if(prompt is null) {
             return new NotFoundError($"No prompt found with ID {id}");
         }
@@ -74,7 +75,7 @@ public class PromptService {
     public async Task<Result<Prompt>> GetPromptByIdAsync(int id, CancellationToken ct) {
         var prompt = await _spearContext.Prompts
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == id && p.GuildId == _commandContext.GuildID.Value, ct);
+            .FirstOrDefaultAsync(p => p.Id == id && p.GuildId == _commandContext.GetGuildId(), ct);
         if(prompt is null) return new NotFoundError($"No prompt found with ID {id}");
         return prompt;
     }
@@ -82,7 +83,7 @@ public class PromptService {
     public async Task<Result<Prompt>> GetRandomPromptAsync(CancellationToken ct) {
         // TODO cache this by guild
         var ids = await _spearContext.Prompts
-            .Where(p => p.GuildId == _commandContext.GuildID.Value)
+            .Where(p => p.GuildId == _commandContext.GetGuildId())
             .Select(p => p.Id)
             .ToListAsync(ct);
         if(!ids.Any()) {
@@ -98,7 +99,7 @@ public class PromptService {
     public async Task<Result<List<Prompt>>> SearchForPromptsAsync(string searchTerm, int limit, CancellationToken ct) {
         var prompts = await _spearContext.Prompts
             .AsNoTracking()
-            .Where(p => p.GuildId == _commandContext.GuildID.Value && EF.Functions.ILike(p.Text, $"%{searchTerm}%"))
+            .Where(p => p.GuildId == _commandContext.GetGuildId() && EF.Functions.ILike(p.Text, $"%{searchTerm}%"))
             .OrderBy(p => p.Id)
             .Take(limit)
             .ToListAsync(ct);

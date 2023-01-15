@@ -100,7 +100,7 @@ public partial class OldMan {
 
             using var registration = CancellationToken.Register(() => tcs.SetCanceled(CancellationToken), useSynchronizationContext: false);
             var confirmation = await _feedback.SendContextualEmbedAsync(embed, options, CancellationToken);
-            if(!confirmation.IsSuccess) return Result.FromError(confirmation);
+            if(!confirmation.IsDefined(out var confirmationMessage)) return Result.FromError(confirmation);
 
             var result = await tcs.Task;
 
@@ -165,8 +165,8 @@ public class PromptDeletePrompt : InteractionGroup {
     public PromptDeletePrompt(InMemoryDataService<string, TaskCompletionSource<string>> data) => _data = data;
 
     [Button(Delete)]
-    public async Task<Result> OnDelete(string key) {
-        var getLease = await _data.LeaseDataAsync(key, CancellationToken);
+    public async Task<Result> OnDelete(string state) {
+        var getLease = await _data.LeaseDataAsync(state, CancellationToken);
         if(!getLease.IsDefined()) return Result.FromError(getLease);
 
         await using var lease = getLease.Entity;
@@ -177,8 +177,8 @@ public class PromptDeletePrompt : InteractionGroup {
     }
 
     [Button(DontDelete)]
-    public async Task<Result> OnDontDelete(string key) {
-        var getLease = await _data.LeaseDataAsync(key, CancellationToken);
+    public async Task<Result> OnDontDelete(string state) {
+        var getLease = await _data.LeaseDataAsync(state, CancellationToken);
         if(!getLease.IsDefined()) return Result.FromError(getLease);
 
         await using var lease = getLease.Entity;
