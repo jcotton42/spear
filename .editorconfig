@@ -212,6 +212,9 @@ dotnet_naming_style.begins_with_i.capitalization = pascal_case
 
 # Microsoft .NET properties
 csharp_new_line_before_open_brace = none
+csharp_new_line_before_else = false
+csharp_new_line_before_catch = false
+csharp_new_line_before_finally = false
 csharp_space_after_keywords_in_control_flow_statements = false
 dotnet_naming_rule.event_rule.import_to_resharper = as_predefined
 dotnet_naming_rule.event_rule.severity = warning

@@ -7,6 +7,7 @@ using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
 using Spear.Completers;
+using Spear.Extensions;
 using Spear.Models;
 using Spear.Services;
 
@@ -34,7 +35,7 @@ public partial class OldMan {
             [Description("The book you wish to add")] [Greedy]
             string title
         ) {
-            var add = await _books.AddGuildBookAsync(title, type, rating, _commandContext.GuildID.Value, CancellationToken);
+            var add = await _books.AddGuildBookAsync(title, type, rating, _commandContext.GetGuildId(), CancellationToken);
             if(add.IsSuccess) {
                 return await _feedback.SendContextualSuccessAsync($"I have added {title} to my repertoire!",
                     ct: CancellationToken);
@@ -52,7 +53,7 @@ public partial class OldMan {
             [AutocompleteProvider(BookTitleCompleter.Identity)]
             string title
         ) {
-            var remove = await _books.RemoveBookFromGuildByTitleAsync(title, type, _commandContext.GuildID.Value, CancellationToken);
+            var remove = await _books.RemoveBookFromGuildByTitleAsync(title, type, _commandContext.GetGuildId(), CancellationToken);
             if(remove.IsSuccess) {
                 return await _feedback.SendContextualSuccessAsync($"I have removed {title} from my repertoire!",
                     ct: CancellationToken);

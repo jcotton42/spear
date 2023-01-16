@@ -1,4 +1,5 @@
 using Remora.Discord.Commands.Contexts;
+using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Discord.Commands.Services;
 using Remora.Results;
@@ -17,7 +18,9 @@ public class PreExecutionHandler : IPreExecutionEvent {
 
     public async Task<Result> BeforeExecutionAsync(ICommandContext context, CancellationToken ct) {
         var calledMeOld = context switch {
-            InteractionContext ic => ic.Data.Name.Value.Equals("oldman", StringComparison.OrdinalIgnoreCase),
+            InteractionContext ic =>
+                ic.Interaction.Data.Value.TryPickT0(out var acd, out _)
+                && acd.Name.Equals("oldman", StringComparison.OrdinalIgnoreCase),
             MessageContext mc => mc.Message.Content.Value[mc.Message.Content.Value.IndexOf(' ')..].TrimStart()
                 .StartsWith("oldman", StringComparison.OrdinalIgnoreCase),
             _ => false,
@@ -26,8 +29,13 @@ public class PreExecutionHandler : IPreExecutionEvent {
             return Result.FromSuccess();
         }
 
-        var getBook = await _book.GetRandomGuildBook(context.GuildID.Value, ct);
-        var book = getBook.IsSuccess ? getBook.Entity : "Just Fourteen";
+        string book;
+        if(context.TryGetGuildID(out var guildId)) {
+            var getBook = await _book.GetRandomGuildBook(guildId.Value, ct);
+            book = getBook.IsSuccess ? getBook.Entity : "Just Fourteen";
+        } else {
+            book = "Just Fourteen";
+        }
 
         var reply = await _feedback.SendContextualNeutralAsync($"{book}! Who are you calling _OLD_ man?!", ct: ct);
         return reply.IsSuccess ? Result.FromSuccess() : Result.FromError(reply);

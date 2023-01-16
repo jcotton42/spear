@@ -13,6 +13,7 @@ using Remora.Discord.Gateway;
 using Remora.Discord.Gateway.Extensions;
 using Remora.Discord.Hosting.Extensions;
 using Remora.Discord.Interactivity.Extensions;
+using Remora.Discord.Interactivity.Services;
 using Remora.Discord.Pagination.Extensions;
 using Remora.Rest.Core;
 using Spear.Commands;
@@ -55,8 +56,7 @@ var host = Host
             .AddScoped<AuthorizationService>()
             .AddScoped<BookService>()
             .AddScoped<GuildService>()
-            .AddScoped<PromptService>()
-            .AddScoped<UserInputService>();
+            .AddScoped<PromptService>();
 
         services
             .AddResponder<RegistrationResponder>()
@@ -73,7 +73,8 @@ var host = Host
             .Finish()
             .AddAutocompleteProvider<BookTitleCompleter>()
             .AddInteractivity()
-            .AddInteractiveEntity<UserInputService.UserInputResponderEntity>()
+            .AddInteractionGroup<PromptDeletePrompt>()
+            .AddSingleton(InMemoryDataService<string, TaskCompletionSource<string>>.Instance)
             .AddPagination();
     })
     .Build();
@@ -98,15 +99,10 @@ if(!env.IsProduction()) {
 }
 
 var slashService = host.Services.GetRequiredService<SlashService>();
-var slashSupport = slashService.SupportsSlashCommands();
-if(slashSupport.IsSuccess) {
-    var updateSlash = await slashService.UpdateSlashCommandsAsync(testGuild);
-    if(!updateSlash.IsSuccess) {
-        logger.LogCritical("Failed to update slash commands: {Reason}", updateSlash.Error?.Message);
-        return 1;
-    }
-} else {
-    logger.LogCritical("The registered commands of the bot don't support slash commands: {Reason}", slashSupport.Error?.Message);
+var updateSlash = await slashService.UpdateSlashCommandsAsync(testGuild);
+if(!updateSlash.IsSuccess) {
+    logger.LogCritical("Failed to update slash commands: {Reason}", updateSlash.Error?.Message);
+    return 1;
 }
 
 await host.RunAsync();
@@ -115,7 +111,7 @@ return 0;
 
 // https://medium.com/@floyd.may/ef-core-app-migrate-on-startup-d046afdba258
 // https://gist.github.com/Tim-Hodge/eea0601a14177c199fe60557eeeff31e
-void Migrate<TContext>(IHost host) where TContext : DbContext {
+static void Migrate<TContext>(IHost host) where TContext : DbContext {
     using var scope = host.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
     using var ctx = scope.ServiceProvider.GetRequiredService<TContext>();
 
@@ -141,7 +137,7 @@ void Migrate<TContext>(IHost host) where TContext : DbContext {
     ctx.Database.Migrate();
 
     // https://www.npgsql.org/efcore/mapping/enum.html#creating-your-database-enum
-    using var conn = (NpgsqlConnection)ctx.Database.GetDbConnection();
+    using var conn = (NpgsqlConnection) ctx.Database.GetDbConnection();
     conn.Open();
     conn.ReloadTypes();
 }

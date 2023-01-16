@@ -3,6 +3,7 @@ using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Contexts;
+using Remora.Discord.Commands.Extensions;
 using Remora.Rest.Core;
 using Remora.Results;
 using Spear.Models;
@@ -31,13 +32,13 @@ public class AuthorizationService {
         UpsertDefaultPermissionAsync(permission, PermissionMode.Deny, ct);
 
     private async Task<Result> UpsertDefaultPermissionAsync(Permission permission, PermissionMode mode, CancellationToken ct) {
-        if(!_commandContext.GuildID.IsDefined(out var guildId)) {
+        if(!_commandContext.TryGetGuildID(out var guildId)) {
             return new InvalidOperationError("Permissions can only be modified from within a guild");
         }
 
-        var entry = await _spearContext.PermissionDefaults.FindAsync(new object[] {guildId, permission}, ct);
+        var entry = await _spearContext.PermissionDefaults.FindAsync(new object[] { guildId.Value, permission }, ct);
         if(entry is null) {
-            entry = new PermissionDefault {GuildId = guildId, Permission = permission};
+            entry = new PermissionDefault { GuildId = guildId.Value, Permission = permission };
             _spearContext.PermissionDefaults.Add(entry);
         }
 
@@ -48,11 +49,11 @@ public class AuthorizationService {
     }
 
     public async Task<Result> ClearDefaultPermissionAsync(Permission permission, CancellationToken ct) {
-        if(!_commandContext.GuildID.IsDefined(out var guildId)) {
+        if(!_commandContext.TryGetGuildID(out var guildId)) {
             return new InvalidOperationError("Permissions can only be modified from within a guild");
         }
 
-        var entry = await _spearContext.PermissionDefaults.FindAsync(new object[] {guildId, permission}, ct);
+        var entry = await _spearContext.PermissionDefaults.FindAsync(new object[] { guildId.Value, permission }, ct);
         if(entry is null) {
             return new NotFoundError("No permission default found for this role");
         }
@@ -70,13 +71,13 @@ public class AuthorizationService {
         UpsertPermissionAsync(roleId, permission, PermissionMode.Deny, ct);
 
     private async Task<Result> UpsertPermissionAsync(Snowflake roleId, Permission permission, PermissionMode mode, CancellationToken ct) {
-        if(!_commandContext.GuildID.IsDefined(out var guildId)) {
+        if(!_commandContext.TryGetGuildID(out var guildId)) {
             return new InvalidOperationError("Permissions can only be modified from within a guild");
         }
 
-        var entry = await _spearContext.PermissionEntries.FindAsync(new object[] {guildId, roleId, permission}, ct);
+        var entry = await _spearContext.PermissionEntries.FindAsync(new object[] { guildId.Value, roleId, permission }, ct);
         if(entry is null) {
-            entry = new PermissionEntry {GuildId = guildId, RoleId = roleId, Permission = permission};
+            entry = new PermissionEntry { GuildId = guildId.Value, RoleId = roleId, Permission = permission };
             _spearContext.PermissionEntries.Add(entry);
         }
 
@@ -87,11 +88,11 @@ public class AuthorizationService {
     }
 
     public async Task<Result> ClearPermissionAsync(Snowflake roleId, Permission permission, CancellationToken ct) {
-        if(!_commandContext.GuildID.IsDefined(out var guildId)) {
+        if(!_commandContext.TryGetGuildID(out var guildId)) {
             return new InvalidOperationError("Permissions can only be modified from within a guild");
         }
 
-        var entry = await _spearContext.PermissionEntries.FindAsync(new object[] {guildId, roleId, permission}, ct);
+        var entry = await _spearContext.PermissionEntries.FindAsync(new object[] { guildId.Value, roleId, permission }, ct);
         if(entry is null) {
             return new NotFoundError("No permission entry found for this role");
         }
@@ -106,7 +107,7 @@ public class AuthorizationService {
         InvokerHasPermissionAsync(Permission.SubmitPrompts, true, ct);
 
     public async Task<Result<bool>> InvokerCanEditOrDeletePromptsAsync(Prompt prompt, CancellationToken ct) {
-        if(_commandContext.User.ID == prompt.Submitter) return true;
+        if(_commandContext.TryGetUserID(out var userId) && userId == prompt.Submitter) return true;
         return await InvokerHasPermissionAsync(Permission.ModeratePrompts, false, ct);
     }
 
@@ -130,19 +131,19 @@ public class AuthorizationService {
     /// </para>
     /// </remarks>
     private async Task<Result<bool>> InvokerHasPermissionAsync(Permission permission, bool @default, CancellationToken ct) {
-        if(!_commandContext.GuildID.IsDefined(out var guildId)) {
+        if(!_commandContext.TryGetGuildID(out var guildId)) {
             return new InvalidOperationError("Commands outside of guilds may not mandate permissions");
         }
 
-        var getGuild = await _guildApi.GetGuildAsync(guildId, ct: ct);
+        var getGuild = await _guildApi.GetGuildAsync(guildId.Value, ct: ct);
         if(!getGuild.IsDefined(out var guild)) return Result<bool>.FromError(getGuild);
-        if(guild.OwnerID == _commandContext.User.ID) return true;
+        if(_commandContext.TryGetUserID(out var userId) && guild.OwnerID == userId) return true;
 
         var get = await GetInvokerRolesAndPermissionsAsync(ct);
         if(!get.IsDefined(out var rp)) return Result<bool>.FromError(get);
         if(rp.Permissions.HasPermission(DiscordPermission.ManageGuild)) return true;
 
-        var defaultPermission = await _spearContext.PermissionDefaults.FindAsync(new object[] {guildId, permission}, ct);
+        var defaultPermission = await _spearContext.PermissionDefaults.FindAsync(new object[] { guildId, permission }, ct);
         var permissions = await _spearContext.PermissionEntries
             .Where(pe =>
                 pe.Permission == permission
@@ -160,17 +161,24 @@ public class AuthorizationService {
 
     private async Task<Result<RolesAndPermissions>> GetInvokerRolesAndPermissionsAsync(CancellationToken ct) {
         // this implementation is pretty much ripped from Remora.Discord's RequireDiscordPermissionCondition 
-        if(!_commandContext.GuildID.IsDefined(out var guildId)) {
+        if(!_commandContext.TryGetGuildID(out var guildId)) {
             return new InvalidOperationError("Permissions are only applicable to commands executed within a guild.");
         }
+        if(!_commandContext.TryGetUserID(out var userId)) {
+            return new InvalidOperationError("Somehow a user didn't invoke this???");
+        }
 
-        var getMember = await _guildApi.GetGuildMemberAsync(guildId, _commandContext.User.ID, ct);
+        var getMember = await _guildApi.GetGuildMemberAsync(guildId.Value, userId.Value, ct);
         if(!getMember.IsDefined(out var member)) return Result<RolesAndPermissions>.FromError(getMember);
 
-        var getGuildRoles = await _guildApi.GetGuildRolesAsync(guildId, ct);
+        var getGuildRoles = await _guildApi.GetGuildRolesAsync(guildId.Value, ct);
         if(!getGuildRoles.IsDefined(out var guildRoles)) return Result<RolesAndPermissions>.FromError(getGuildRoles);
 
-        var getChannel = await _channelApi.GetChannelAsync(_commandContext.ChannelID, ct);
+        if(!_commandContext.TryGetChannelID(out var channelId)) {
+            return new InvalidOperationError("Permissions require a channel context");
+        }
+
+        var getChannel = await _channelApi.GetChannelAsync(channelId.Value, ct);
         if(!getChannel.IsDefined(out var channel)) return Result<RolesAndPermissions>.FromError(getChannel);
 
         var everyoneRole = guildRoles.First(r => r.ID == guildId);
@@ -180,7 +188,7 @@ public class AuthorizationService {
             : Array.Empty<PermissionOverwrite>();
 
         var computedPermissions = DiscordPermissionSet.ComputePermissions(
-            _commandContext.User.ID,
+            userId.Value,
             everyoneRole,
             memberRoles,
             permissionOverwrites

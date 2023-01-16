@@ -7,6 +7,7 @@ using Remora.Discord.Commands.Conditions;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
+using Spear.Extensions;
 using Spear.Services;
 
 namespace Spear.Commands;
@@ -30,10 +31,10 @@ public partial class OldMan {
         [Command("register")]
         [Description("Registers this server with the bot. This is usually done for you automatically upon join.")]
         public async Task<IResult> RegisterAsync() {
-            var getGuild = await _guildApi.GetGuildAsync(_commandContext.GuildID.Value, ct: CancellationToken);
+            var getGuild = await _guildApi.GetGuildAsync(_commandContext.GetGuildId(), ct: CancellationToken);
             if(!getGuild.IsDefined(out var guild)) return getGuild;
 
-            await _guild.UpsertGuildAsync(_commandContext.GuildID.Value, guild.Name, CancellationToken);
+            await _guild.UpsertGuildAsync(_commandContext.GetGuildId(), guild.Name, CancellationToken);
 
             return await _feedback.SendContextualSuccessAsync("I've registered your server!", ct: CancellationToken);
         }

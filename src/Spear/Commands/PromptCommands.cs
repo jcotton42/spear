@@ -2,13 +2,16 @@ using System.ComponentModel;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
+using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Conditions;
 using Remora.Discord.Commands.Contexts;
+using Remora.Discord.Commands.Feedback.Messages;
 using Remora.Discord.Commands.Feedback.Services;
-using Remora.Discord.Interactivity.Services;
+using Remora.Discord.Interactivity;
 using Remora.Discord.Pagination.Extensions;
 using Remora.Results;
+using Spear.Extensions;
 using Spear.Services;
 
 namespace Spear.Commands;
@@ -18,17 +21,13 @@ public partial class OldMan {
     public class PromptCommands : CommandGroup {
         private readonly ICommandContext _commandContext;
         private readonly FeedbackService _feedback;
-        private readonly InteractiveMessageService _interactiveMessages;
         private readonly PromptService _prompt;
-        private readonly UserInputService _userInput;
 
-        public PromptCommands(ICommandContext commandContext, FeedbackService feedback,
-            InteractiveMessageService interactiveMessages, PromptService prompt, UserInputService userInput) {
+        public PromptCommands(ICommandContext commandContext,
+            FeedbackService feedback, PromptService prompt) {
             _commandContext = commandContext;
             _feedback = feedback;
-            _interactiveMessages = interactiveMessages;
             _prompt = prompt;
-            _userInput = userInput;
         }
 
         [Command("suggest")]
@@ -74,28 +73,26 @@ public partial class OldMan {
             var getPrompt = await _prompt.GetPromptByIdAsync(id, CancellationToken);
             if(!getPrompt.IsDefined(out var prompt)) return getPrompt;
 
-            var getIndex = await _userInput.RequestInputWithButtonsAsync(
-                $"Are you sure you want to delete this prompt?\n>>> {prompt.Text}",
-                new[] {
-                    new Button("Delete", ButtonComponentStyle.Danger),
-                    new Button("Cancel", ButtonComponentStyle.Secondary)
-                },
-                CancellationToken
-            );
-            if(!getIndex.IsDefined(out var index)) return getIndex;
-
-            if(index != 0) {
-                return await _feedback.SendContextualNeutralAsync("The prompt lives. For now.", ct: CancellationToken);
-            }
-
-            var delete = await _prompt.DeletePromptAsync(prompt, CancellationToken);
-            if(!delete.IsSuccess) return delete;
-
-            return await _feedback.SendContextualSuccessAsync(
-                "I have deleted the prompt.",
-                ct: CancellationToken
+            var embed = new Embed(Description: $"Are you sure you want to delete this prompt?\n>>> {prompt.Text}");
+            var options = new FeedbackMessageOptions(
+                MessageFlags: MessageFlags.Ephemeral,
+                MessageComponents: new[] {
+                    new ActionRowComponent(new[] {
+                        new ButtonComponent(
+                            Label: "Delete",
+                            Style: ButtonComponentStyle.Danger,
+                            CustomID: CustomIDHelpers.CreateButtonIDWithState(PromptDeletePrompt.Delete, id.ToString())
+                        ),
+                        new ButtonComponent(
+                            Label: "Don't delete",
+                            Style: ButtonComponentStyle.Secondary,
+                            CustomID: CustomIDHelpers.CreateButtonIDWithState(PromptDeletePrompt.DontDelete, id.ToString())
+                        ),
+                    })
+                }
             );
 
+            return await _feedback.SendContextualEmbedAsync(embed, options, CancellationToken);
         }
 
         [Command("prompt")]
@@ -128,11 +125,54 @@ public partial class OldMan {
                     Description: $"Is this what you were looking for{creditLine}?\n#`{p.Id}`\n>>> {p.Text}");
             }).ToList();
 
-            return await _interactiveMessages.SendContextualPaginatedMessageAsync(
-                _commandContext.User.ID,
+            return await _feedback.SendContextualPaginatedMessageAsync(
+                _commandContext.GetUserId(),
                 pages,
                 ct: CancellationToken
             );
         }
+    }
+}
+
+public class PromptDeletePrompt : InteractionGroup {
+    public const string Delete = "delete";
+    public const string DontDelete = "dont-delete";
+    private readonly IInteractionContext _context;
+    private readonly IDiscordRestInteractionAPI _interactionApi;
+    private readonly PromptService _prompt;
+
+    public PromptDeletePrompt(IInteractionContext context, IDiscordRestInteractionAPI interactionAPI, PromptService prompt) {
+        _context = context;
+        _interactionApi = interactionAPI;
+        _prompt = prompt;
+    }
+
+    [Button(Delete)]
+    public async Task<IResult> OnDelete(string state) {
+        var id = int.Parse(state);
+        var getPrompt = await _prompt.GetPromptByIdAsync(id, CancellationToken);
+        if(!getPrompt.IsDefined(out var prompt)) return getPrompt;
+
+        var deletePrompt = await _prompt.DeletePromptAsync(prompt, CancellationToken);
+        if(!deletePrompt.IsSuccess) return deletePrompt;
+
+        return await _interactionApi.EditOriginalInteractionResponseAsync(
+            _context.Interaction.ApplicationID,
+            _context.Interaction.Token,
+            embeds: new Embed[] { new(Description: $"Prompt #{state} has been deleted.") },
+            components: Array.Empty<IMessageComponent>(),
+            ct: CancellationToken
+        );
+    }
+
+    [Button(DontDelete)]
+    public async Task<IResult> OnDontDelete(string state) {
+        return await _interactionApi.EditOriginalInteractionResponseAsync(
+            _context.Interaction.ApplicationID,
+            _context.Interaction.Token,
+            embeds: new Embed[] { new(Description: $"Prompt #{state} lives. For now.") },
+            components: Array.Empty<IMessageComponent>(),
+            ct: CancellationToken
+        );
     }
 }

@@ -1,5 +1,6 @@
 using Remora.Commands.Results;
 using Remora.Discord.Commands.Contexts;
+using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Discord.Commands.Services;
 using Remora.Results;
@@ -32,8 +33,14 @@ public class PostExecutionHandler : IPostExecutionEvent {
         } else {
             message = error.Message;
         }
-        var book = await _books.GetRandomGuildBook(context.GuildID.Value, ct);
-        var title = book.IsSuccess ? book.Entity : "Just Fourteen";
+
+        string title;
+        if(context.TryGetGuildID(out var guildId)) {
+            var book = await _books.GetRandomGuildBook(guildId.Value, ct);
+            title = book.IsSuccess ? book.Entity : "Just Fourteen";
+        } else {
+            title = "Just Fourteen";
+        }
 
         var reply = await _feedback.SendContextualErrorAsync($"{title}! {message}", ct: ct);
         if(reply.IsSuccess) {

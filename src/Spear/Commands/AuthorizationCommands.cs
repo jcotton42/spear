@@ -6,6 +6,7 @@ using Remora.Discord.Commands.Conditions;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
+using Spear.Extensions;
 using Spear.Models;
 using Spear.Services;
 
@@ -37,12 +38,11 @@ public partial class OldMan {
         ) {
             IResult grant;
             string message;
-            if(role.ID == _commandContext.GuildID.Value) {
+            if(role.ID == _commandContext.GetGuildId()) {
                 // @everyone passed for role
                 grant = await _authorization.GrantDefaultPermissionAsync(permission, CancellationToken);
                 message = $"Everyone now has {permission} granted by default";
-            }
-            else {
+            } else {
                 grant = await _authorization.GrantPermissionAsync(role.ID, permission, CancellationToken);
                 message = $"Granted {permission} for <@&{role.ID}>";
             }
@@ -62,12 +62,11 @@ public partial class OldMan {
         ) {
             IResult deny;
             string message;
-            if(role.ID == _commandContext.GuildID.Value) {
+            if(role.ID == _commandContext.GetGuildId()) {
                 // @everyone passed for role
                 deny = await _authorization.DenyDefaultPermissionAsync(permission, CancellationToken);
                 message = $"Everyone now has {permission} denied by default";
-            }
-            else {
+            } else {
                 deny = await _authorization.DenyPermissionAsync(role.ID, permission, CancellationToken);
                 message = $"Denied {permission} for <@&{role.ID}>";
             }
@@ -87,12 +86,11 @@ public partial class OldMan {
         ) {
             IResult reset;
             string message;
-            if(role.ID == _commandContext.GuildID.Value) {
+            if(role.ID == _commandContext.GetGuildId()) {
                 // @everyone passed for role
                 reset = await _authorization.ClearDefaultPermissionAsync(permission, CancellationToken);
                 message = $"Reset {permission} for everyone";
-            }
-            else {
+            } else {
                 reset = await _authorization.ClearPermissionAsync(role.ID, permission, CancellationToken);
                 message = $"Reset {permission} for <@&{role.ID}>";
             }
