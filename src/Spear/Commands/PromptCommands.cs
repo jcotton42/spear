@@ -2,13 +2,13 @@ using System.ComponentModel;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
+using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Conditions;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Messages;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Discord.Interactivity;
-using Remora.Discord.Interactivity.Services;
 using Remora.Discord.Pagination.Extensions;
 using Remora.Results;
 using Spear.Extensions;
@@ -20,14 +20,12 @@ public partial class OldMan {
     [RequireContext(ChannelContext.Guild)]
     public class PromptCommands : CommandGroup {
         private readonly ICommandContext _commandContext;
-        private readonly InMemoryDataService<string, TaskCompletionSource<string>> _data;
         private readonly FeedbackService _feedback;
         private readonly PromptService _prompt;
 
-        public PromptCommands(ICommandContext commandContext, InMemoryDataService<string, TaskCompletionSource<string>> data,
+        public PromptCommands(ICommandContext commandContext,
             FeedbackService feedback, PromptService prompt) {
             _commandContext = commandContext;
-            _data = data;
             _feedback = feedback;
             _prompt = prompt;
         }
@@ -75,10 +73,6 @@ public partial class OldMan {
             var getPrompt = await _prompt.GetPromptByIdAsync(id, CancellationToken);
             if(!getPrompt.IsDefined(out var prompt)) return getPrompt;
 
-            var key = Guid.NewGuid().ToString("N");
-            var tcs = new TaskCompletionSource<string>();
-            _data.TryAddData(key, tcs);
-
             var embed = new Embed(Description: $"Are you sure you want to delete this prompt?\n>>> {prompt.Text}");
             var options = new FeedbackMessageOptions(
                 MessageFlags: MessageFlags.Ephemeral,
@@ -87,35 +81,18 @@ public partial class OldMan {
                         new ButtonComponent(
                             Label: "Delete",
                             Style: ButtonComponentStyle.Danger,
-                            CustomID: CustomIDHelpers.CreateButtonIDWithState(PromptDeletePrompt.Delete, key)
+                            CustomID: CustomIDHelpers.CreateButtonIDWithState(PromptDeletePrompt.Delete, id.ToString())
                         ),
                         new ButtonComponent(
                             Label: "Don't delete",
                             Style: ButtonComponentStyle.Secondary,
-                            CustomID: CustomIDHelpers.CreateButtonIDWithState(PromptDeletePrompt.DontDelete, key)
+                            CustomID: CustomIDHelpers.CreateButtonIDWithState(PromptDeletePrompt.DontDelete, id.ToString())
                         ),
                     })
                 }
             );
 
-            using var registration = CancellationToken.Register(() => tcs.SetCanceled(CancellationToken), useSynchronizationContext: false);
-            var confirmation = await _feedback.SendContextualEmbedAsync(embed, options, CancellationToken);
-            if(!confirmation.IsDefined(out var confirmationMessage)) return Result.FromError(confirmation);
-
-            var result = await tcs.Task;
-
-            if(result == PromptDeletePrompt.DontDelete) {
-                return await _feedback.SendContextualNeutralAsync("The prompt lives. For now.", ct: CancellationToken);
-            }
-
-            var delete = await _prompt.DeletePromptAsync(prompt, CancellationToken);
-            if(!delete.IsSuccess) return delete;
-
-            return await _feedback.SendContextualSuccessAsync(
-                "I have deleted the prompt.",
-                ct: CancellationToken
-            );
-
+            return await _feedback.SendContextualEmbedAsync(embed, options, CancellationToken);
         }
 
         [Command("prompt")]
@@ -160,31 +137,42 @@ public partial class OldMan {
 public class PromptDeletePrompt : InteractionGroup {
     public const string Delete = "delete";
     public const string DontDelete = "dont-delete";
-    private readonly InMemoryDataService<string, TaskCompletionSource<string>> _data;
+    private readonly IInteractionContext _context;
+    private readonly IDiscordRestInteractionAPI _interactionApi;
+    private readonly PromptService _prompt;
 
-    public PromptDeletePrompt(InMemoryDataService<string, TaskCompletionSource<string>> data) => _data = data;
+    public PromptDeletePrompt(IInteractionContext context, IDiscordRestInteractionAPI interactionAPI, PromptService prompt) {
+        _context = context;
+        _interactionApi = interactionAPI;
+        _prompt = prompt;
+    }
 
     [Button(Delete)]
-    public async Task<Result> OnDelete(string state) {
-        var getLease = await _data.LeaseDataAsync(state, CancellationToken);
-        if(!getLease.IsDefined()) return Result.FromError(getLease);
+    public async Task<IResult> OnDelete(string state) {
+        var id = int.Parse(state);
+        var getPrompt = await _prompt.GetPromptByIdAsync(id, CancellationToken);
+        if(!getPrompt.IsDefined(out var prompt)) return getPrompt;
 
-        await using var lease = getLease.Entity;
-        lease.Data.SetResult(Delete);
-        lease.Delete();
+        var deletePrompt = await _prompt.DeletePromptAsync(prompt, CancellationToken);
+        if(!deletePrompt.IsSuccess) return deletePrompt;
 
-        return Result.FromSuccess();
+        return await _interactionApi.EditOriginalInteractionResponseAsync(
+            _context.Interaction.ApplicationID,
+            _context.Interaction.Token,
+            embeds: new Embed[] { new(Description: $"Prompt #{state} has been deleted.") },
+            components: Array.Empty<IMessageComponent>(),
+            ct: CancellationToken
+        );
     }
 
     [Button(DontDelete)]
-    public async Task<Result> OnDontDelete(string state) {
-        var getLease = await _data.LeaseDataAsync(state, CancellationToken);
-        if(!getLease.IsDefined()) return Result.FromError(getLease);
-
-        await using var lease = getLease.Entity;
-        lease.Data.SetResult(DontDelete);
-        lease.Delete();
-
-        return Result.FromSuccess();
+    public async Task<IResult> OnDontDelete(string state) {
+        return await _interactionApi.EditOriginalInteractionResponseAsync(
+            _context.Interaction.ApplicationID,
+            _context.Interaction.Token,
+            embeds: new Embed[] { new(Description: $"Prompt #{state} lives. For now.") },
+            components: Array.Empty<IMessageComponent>(),
+            ct: CancellationToken
+        );
     }
 }
