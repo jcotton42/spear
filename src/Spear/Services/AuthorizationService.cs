@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.API.Objects;
@@ -6,20 +8,26 @@ using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Extensions;
 using Remora.Rest.Core;
 using Remora.Results;
+using Spear.Extensions;
 using Spear.Models;
 
 namespace Spear.Services;
 
+public record PermissionDefaultAuditMetadata(Permission Permission, PermissionMode? Mode);
+public record PermissionAuditMetadata(Snowflake RoleId, Permission Permission, PermissionMode? Mode);
 public class AuthorizationService {
     private record RolesAndPermissions(IReadOnlyList<Snowflake> Roles, IDiscordPermissionSet Permissions);
 
     private readonly IDiscordRestChannelAPI _channelApi;
+    private readonly IClock _clock;
     private readonly ICommandContext _commandContext;
     private readonly IDiscordRestGuildAPI _guildApi;
     private readonly SpearContext _spearContext;
 
-    public AuthorizationService(IDiscordRestChannelAPI channelApi, ICommandContext commandContext, IDiscordRestGuildAPI guildApi, SpearContext spearContext) {
+    public AuthorizationService(IDiscordRestChannelAPI channelApi, IClock clock, ICommandContext commandContext,
+    IDiscordRestGuildAPI guildApi, SpearContext spearContext) {
         _channelApi = channelApi;
+        _clock = clock;
         _commandContext = commandContext;
         _guildApi = guildApi;
         _spearContext = spearContext;
@@ -38,9 +46,19 @@ public class AuthorizationService {
 
         var entry = await _spearContext.PermissionDefaults.FindAsync(new object[] { guildId.Value, permission }, ct);
         if(entry is null) {
-            entry = new PermissionDefault { GuildId = guildId.Value, Permission = permission };
+            entry = new PermissionDefault {
+                GuildId = guildId.Value, Permission = permission
+            };
             _spearContext.PermissionDefaults.Add(entry);
         }
+        using var auditEntry = new AuditEntry {
+            Timestamp = _clock.GetCurrentInstant(),
+            Type = AuditEntryType.ModifyDefaultPermission,
+            GuildId = guildId.Value,
+            UserId = _commandContext.GetUserId(),
+            Metadata = JsonSerializer.SerializeToDocument(new PermissionDefaultAuditMetadata(permission, mode))
+        };
+        _spearContext.AuditEntries.Add(auditEntry);
 
         entry.Mode = mode;
         await _spearContext.SaveChangesAsync(ct);
@@ -57,8 +75,16 @@ public class AuthorizationService {
         if(entry is null) {
             return new NotFoundError("No permission default found for this role");
         }
+        using var auditEntry = new AuditEntry {
+            Type = AuditEntryType.ModifyDefaultPermission,
+            Timestamp = _clock.GetCurrentInstant(),
+            GuildId = guildId.Value,
+            UserId = _commandContext.GetUserId(),
+            Metadata = JsonSerializer.SerializeToDocument(new PermissionDefaultAuditMetadata(permission, null))
+        };
 
         _spearContext.PermissionDefaults.Remove(entry);
+        _spearContext.AuditEntries.Add(auditEntry);
         await _spearContext.SaveChangesAsync(ct);
 
         return Result.FromSuccess();

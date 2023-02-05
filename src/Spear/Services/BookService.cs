@@ -1,21 +1,32 @@
+using System.Text.Json;
 using EntityFramework.Exceptions.Common;
 using LazyCache;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
+using Remora.Discord.Commands.Contexts;
 using Remora.Rest.Core;
 using Remora.Results;
+using Spear.Extensions;
 using Spear.Models;
 using Spear.Results;
 
 namespace Spear.Services;
 
+public record BookAddAuditMetadata(string Title);
+public record BookRemoveAuditMetadata(string Title);
 public class BookService {
     private readonly AuthorizationService _authorization;
     private readonly IAppCache _cache;
+    private readonly IClock _clock;
+    private readonly ICommandContext _commandContext;
     private readonly SpearContext _context;
 
-    public BookService(AuthorizationService authorization, IAppCache cache, SpearContext context) {
+    public BookService(AuthorizationService authorization, IAppCache cache, IClock clock,
+    ICommandContext commandContext, SpearContext context) {
         _authorization = authorization;
         _cache = cache;
+        _clock = clock;
+        _commandContext = commandContext;
         _context = context;
     }
 
@@ -64,6 +75,14 @@ public class BookService {
 
         var book = new Book { Title = title, Type = type, Rating = rating, GuildId = guild };
         _context.Books.Add(book);
+        using var entity = new AuditEntry {
+            Timestamp = _clock.GetCurrentInstant(),
+            GuildId = guild,
+            UserId = _commandContext.GetUserId(),
+            Type = AuditEntryType.AddBook,
+            Metadata = JsonSerializer.SerializeToDocument(new BookAddAuditMetadata(title)),
+        };
+        _context.AuditEntries.Add(entity);
         try {
             await _context.SaveChangesAsync(ct);
             // TODO need to handle global book additions
@@ -149,15 +168,33 @@ public class BookService {
             return new SpearPermissionDeniedError("You can't remove books.", Permission.ModerateBooks);
         }
 
+        List<AuditEntry>? auditEntries = null;
+        int affected;
         var books = await _context.Books
             .Where(b => b.Title == title && b.Type == type && b.GuildId == guild)
             .ToListAsync(ct);
-        _context.Books.RemoveRange(books);
-        var affected = await _context.SaveChangesAsync(ct);
+        var timestamp = _clock.GetCurrentInstant();
+        try {
+            auditEntries = books.Select(b => new AuditEntry {
+                Timestamp = timestamp,
+                GuildId = guild,
+                UserId = _commandContext.GetUserId(),
+                Type = AuditEntryType.RemoveBook,
+                Metadata = JsonSerializer.SerializeToDocument(new BookRemoveAuditMetadata(b.Title)),
+            }).ToList();
+            _context.Books.RemoveRange(books);
+            _context.AuditEntries.AddRange(auditEntries);
+            affected = await _context.SaveChangesAsync(ct);
+        } finally {
+            if(auditEntries != null) {
+                foreach(var entry in auditEntries) entry.Dispose();
+            }
+        }
 
         if(affected > 0) {
             _cache.Remove(CacheKeys.GuildBooks(guild));
-            return affected;
+            // half of the rows will be the corresponding audit entries
+            return affected / 2;
         }
         return new NotFoundError(
             $"No books matching title {title} and {type} were found for removal."

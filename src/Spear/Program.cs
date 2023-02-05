@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
+using NodaTime;
 using Npgsql;
 using Remora.Commands.Extensions;
 using Remora.Discord.API;
@@ -56,7 +57,8 @@ var host = Host
             .AddScoped<AuthorizationService>()
             .AddScoped<BookService>()
             .AddScoped<GuildService>()
-            .AddScoped<PromptService>();
+            .AddScoped<PromptService>()
+            .AddSingleton<IClock>(SystemClock.Instance);
 
         services
             .AddResponder<RegistrationResponder>()
