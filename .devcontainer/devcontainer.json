@@ -1,46 +1,47 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
-// https://github.com/microsoft/vscode-dev-containers/tree/v0.234.0/containers/dotnet-postgres
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-docker-compose
 {
     "name": "Spear",
+    // Update the 'dockerComposeFile' list if you have more compose files or use different names.
+    // The .devcontainer/docker-compose.yml file contains any overrides you need/want to make.
     "dockerComposeFile": [
         "../docker-compose.yml",
-        "docker-compose.devcontainer-common.yml",
-        "docker-compose.devcontainer-vscode.yml"
+        "docker-compose.yml"
     ],
+    // The 'service' property is the name of the service for the container that VS Code should
+    // use. Update this value and .devcontainer/docker-compose.yml to the real service name.
     "service": "spear",
-    "workspaceFolder": "/workspace",
-
-    // Set *default* container specific settings.json values on container create.
-    "settings": {},
-
-    // Add the IDs of extensions you want installed when the container is created.
-    "extensions": ["ms-dotnettools.csharp", "streetsidesoftware.code-spell-checker"],
-
+    // The optional 'workspaceFolder' property is the path VS Code should open by default when
+    // connected. This is typically a file mount in .devcontainer/docker-compose.yml
+    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+    "features": {
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {
+            "moby": true,
+            "azureDnsAutoDetection": true,
+            "version": "latest",
+            "dockerDashComposeVersion": "v2"
+        }
+    },
     // Use 'forwardPorts' to make a list of ports inside the container available locally.
-    "forwardPorts": ["adminer:8080", "db:5432"],
-
-    // [Optional] To reuse of your local HTTPS dev cert:
-    //
-    // 1. Export it locally using this command:
-    //    * Windows PowerShell:
-    //        dotnet dev-certs https --trust; dotnet dev-certs https -ep "$env:USERPROFILE/.aspnet/https/aspnetapp.pfx" -p "SecurePwdGoesHere"
-    //    * macOS/Linux terminal:
-    //        dotnet dev-certs https --trust; dotnet dev-certs https -ep "${HOME}/.aspnet/https/aspnetapp.pfx" -p "SecurePwdGoesHere"
-    // 
-    // 2. Uncomment these 'remoteEnv' lines:
-    //    "remoteEnv": {
-    // 	      "ASPNETCORE_Kestrel__Certificates__Default__Password": "SecurePwdGoesHere",
-    //        "ASPNETCORE_Kestrel__Certificates__Default__Path": "/home/vscode/.aspnet/https/aspnetapp.pfx",
-    //    },
-    //
-    // 3. Next, copy your certificate into the container:
-    //      1. Start the container
-    //      2. Drag ~/.aspnet/https/aspnetapp.pfx into the root of the file explorer
-    //      3. Open a terminal in VS Code and run "mkdir -p /home/vscode/.aspnet/https && mv aspnetapp.pfx /home/vscode/.aspnet/https"
-
-    // Use 'postCreateCommand' to run commands after the container is created.
-    "postCreateCommand": "dotnet restore && dotnet tool restore",
-
-    // Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-    "remoteUser": "vscode"
+    "forwardPorts": [
+        "adminer:8080",
+        "db:5432",
+        "spear:2222"
+    ],
+    // Uncomment the next line if you want start specific services in your Docker Compose config.
+    // "runServices": [],
+    // Uncomment the next line if you want to keep your containers running after VS Code shuts down.
+    // "shutdownAction": "none",
+    // Uncomment the next line to run commands after the container is created.
+    "postCreateCommand": ".devcontainer/setup.sh && dotnet restore && dotnet tool restore",
+    // Configure tool-specific properties.
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-dotnettools.csharp"
+            ]
+        }
+    }
+    // Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
+    // "remoteUser": "devcontainer"
 }
