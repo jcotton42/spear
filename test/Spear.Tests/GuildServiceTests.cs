@@ -1,5 +1,6 @@
 using Bogus;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Remora.Discord.API;
 using Spear.Models;
@@ -26,5 +27,35 @@ public class GuildServiceTests : TestBase, IClassFixture<DbFixture> {
         await _dbContext.SaveChangesAsync();
 
         (await _guild.IsGuildRegisteredAsync(insertedGuild.Id, CancellationToken.None)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UpsertInsertsWhenNoMatch() {
+        var newGuild = _guildFaker.Generate();
+        await _guild.UpsertGuildAsync(newGuild.Id, newGuild.Name, CancellationToken.None);
+
+        _dbContext.ChangeTracker.Clear();
+
+        var guild = await _dbContext.Guilds.FirstOrDefaultAsync(g => g.Id == newGuild.Id);
+        guild.Should().NotBeNull();
+        guild!.Id.Should().BeEquivalentTo(newGuild.Id);
+        guild.Name.Should().BeEquivalentTo(newGuild.Name);
+    }
+
+    [Fact]
+    public async Task UpsertUpdatesWhenIdMatches() {
+        var initialGuild = _guildFaker.Generate();
+        _dbContext.Guilds.Add(initialGuild);
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+        var newGuild = _guildFaker.Generate();
+        newGuild.Id = initialGuild.Id;
+
+        await _guild.UpsertGuildAsync(newGuild.Id, newGuild.Name, CancellationToken.None);
+        _dbContext.ChangeTracker.Clear();
+        var retreived = await _dbContext.Guilds.FirstOrDefaultAsync(g => g.Id == newGuild.Id);
+
+        retreived.Should().NotBeNull();
+        retreived!.Name.Should().BeEquivalentTo(newGuild.Name);
     }
 }
