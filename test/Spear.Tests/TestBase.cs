@@ -1,21 +1,27 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Respawn;
 using Spear.Models;
 
 namespace Spear.Tests;
 
 public abstract class TestBase : IAsyncLifetime {
-    protected SpearContext _dbContext;
     protected Respawner _dbRespawner;
+    protected IServiceScope _scope;
 
-    public TestBase(DbFixture dbFixture) {
-        _dbContext = dbFixture.DbContext;
-        _dbRespawner = dbFixture.DbRespawner;
+    public TestBase(ServicesFixture servicesFixture) {
+        _dbRespawner = servicesFixture.DbRespawner;
+        _scope = servicesFixture.Services.CreateScope();
     }
 
     public async Task InitializeAsync() {
-        await _dbRespawner.ResetAsync(_dbContext.Database.GetDbConnection());
+        var context = _scope.ServiceProvider.GetRequiredService<SpearContext>();
+        await context.Database.OpenConnectionAsync();
+        await _dbRespawner.ResetAsync(context.Database.GetDbConnection());
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public Task DisposeAsync() {
+        _scope.Dispose();
+        return Task.CompletedTask;
+    }
 }

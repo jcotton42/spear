@@ -1,23 +1,25 @@
 using Bogus;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.DependencyInjection;
 using Remora.Discord.API;
 using Spear.Models;
 using Spear.Services;
 
 namespace Spear.Tests;
 
-public class GuildServiceTests : TestBase, IClassFixture<DbFixture> {
-    private readonly GuildService _guild;
+public class GuildServiceTests : TestBase, IClassFixture<ServicesFixture> {
+    private readonly SpearContext _dbContext;
     private readonly Faker<Guild> _guildFaker;
+    private readonly GuildService _guilds;
 
-    public GuildServiceTests(DbFixture dbFixture) : base(dbFixture) {
-        _guild = new GuildService(NullLogger<GuildService>.Instance, dbFixture.DbContext);
-
+    public GuildServiceTests(ServicesFixture servicesFixture) : base(servicesFixture) {
         _guildFaker = new Faker<Guild>()
             .RuleFor(g => g.Id, faker => DiscordSnowflake.New(faker.Random.ULong()))
             .RuleFor(g => g.Name, faker => faker.Company.CompanyName());
+
+        _dbContext = _scope.ServiceProvider.GetRequiredService<SpearContext>();
+        _guilds = _scope.ServiceProvider.GetRequiredService<GuildService>();
     }
 
     [Fact]
@@ -26,14 +28,14 @@ public class GuildServiceTests : TestBase, IClassFixture<DbFixture> {
         _dbContext.Guilds.Add(insertedGuild);
         await _dbContext.SaveChangesAsync();
 
-        (await _guild.IsGuildRegisteredAsync(insertedGuild.Id, CancellationToken.None)).Should().BeTrue();
+        (await _guilds.IsGuildRegisteredAsync(insertedGuild.Id, CancellationToken.None)).Should().BeTrue();
     }
 
     [Fact]
     public async Task UpsertInsertsWhenNoMatch() {
         var newGuild = _guildFaker.Generate();
-        await _guild.UpsertGuildAsync(newGuild.Id, newGuild.Name, CancellationToken.None);
 
+        await _guilds.UpsertGuildAsync(newGuild.Id, newGuild.Name, CancellationToken.None);
         _dbContext.ChangeTracker.Clear();
 
         var guild = await _dbContext.Guilds.FirstOrDefaultAsync(g => g.Id == newGuild.Id);
@@ -51,7 +53,7 @@ public class GuildServiceTests : TestBase, IClassFixture<DbFixture> {
         var newGuild = _guildFaker.Generate();
         newGuild.Id = initialGuild.Id;
 
-        await _guild.UpsertGuildAsync(newGuild.Id, newGuild.Name, CancellationToken.None);
+        await _guilds.UpsertGuildAsync(newGuild.Id, newGuild.Name, CancellationToken.None);
         _dbContext.ChangeTracker.Clear();
         var retreived = await _dbContext.Guilds.FirstOrDefaultAsync(g => g.Id == newGuild.Id);
 
