@@ -56,7 +56,8 @@ var host = Host
             .AddScoped<AuthorizationService>()
             .AddScoped<BookService>()
             .AddScoped<GuildService>()
-            .AddScoped<PromptService>();
+            .AddScoped<PromptService>()
+            .AddScoped<ISpearOperationContext, SpearDiscordOperationConext>();
 
         services
             .AddResponder<RegistrationResponder>()
