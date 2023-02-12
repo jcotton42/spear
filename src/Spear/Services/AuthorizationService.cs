@@ -4,6 +4,7 @@ using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Extensions;
+using Remora.Discord.Commands.Results;
 using Remora.Rest.Core;
 using Remora.Results;
 using Spear.Models;
@@ -33,6 +34,10 @@ public class AuthorizationService {
         UpsertDefaultPermissionAsync(permission, PermissionMode.Deny, ct);
 
     private async Task<Result> UpsertDefaultPermissionAsync(Permission permission, PermissionMode mode, CancellationToken ct) {
+        var getCanModify = await InvokerCanModifyAuthroizationAsync(ct);
+        if(!getCanModify.IsDefined(out var canModify)) return Result.FromError(getCanModify);
+        if(!canModify) return new PermissionDeniedError("You do not have permission to modify authorization.", DiscordPermission.ManageGuild);
+
         var entry = await _spearContext.PermissionDefaults.FindAsync(new object[] { _operationContext.GuildId, permission }, ct);
         if(entry is null) {
             entry = new PermissionDefault { GuildId = _operationContext.GuildId, Permission = permission };
@@ -46,6 +51,10 @@ public class AuthorizationService {
     }
 
     public async Task<Result> ClearDefaultPermissionAsync(Permission permission, CancellationToken ct) {
+        var getCanModify = await InvokerCanModifyAuthroizationAsync(ct);
+        if(!getCanModify.IsDefined(out var canModify)) return Result.FromError(getCanModify);
+        if(!canModify) return new PermissionDeniedError("You do not have permission to modify authorization.", DiscordPermission.ManageGuild);
+
         var entry = await _spearContext.PermissionDefaults.FindAsync(new object[] { _operationContext.GuildId, permission }, ct);
         if(entry is null) {
             return new NotFoundError("No permission default found for this role");
@@ -64,6 +73,10 @@ public class AuthorizationService {
         UpsertPermissionAsync(roleId, permission, PermissionMode.Deny, ct);
 
     private async Task<Result> UpsertPermissionAsync(Snowflake roleId, Permission permission, PermissionMode mode, CancellationToken ct) {
+        var getCanModify = await InvokerCanModifyAuthroizationAsync(ct);
+        if(!getCanModify.IsDefined(out var canModify)) return Result.FromError(getCanModify);
+        if(!canModify) return new PermissionDeniedError("You do not have permission to modify authorization.", DiscordPermission.ManageGuild);
+
         var entry = await _spearContext.PermissionEntries.FindAsync(new object[] { _operationContext.GuildId, roleId, permission }, ct);
         if(entry is null) {
             entry = new PermissionEntry { GuildId = _operationContext.GuildId, RoleId = roleId, Permission = permission };
@@ -77,6 +90,10 @@ public class AuthorizationService {
     }
 
     public async Task<Result> ClearPermissionAsync(Snowflake roleId, Permission permission, CancellationToken ct) {
+        var getCanModify = await InvokerCanModifyAuthroizationAsync(ct);
+        if(!getCanModify.IsDefined(out var canModify)) return Result.FromError(getCanModify);
+        if(!canModify) return new PermissionDeniedError("You do not have permission to modify authorization.", DiscordPermission.ManageGuild);
+
         var entry = await _spearContext.PermissionEntries.FindAsync(new object[] { _operationContext.GuildId, roleId, permission }, ct);
         if(entry is null) {
             return new NotFoundError("No permission entry found for this role");
@@ -89,15 +106,28 @@ public class AuthorizationService {
     }
 
     public Task<Result<bool>> InvokerCanSubmitPromptsAsync(CancellationToken ct) =>
-        InvokerHasPermissionAsync(Permission.SubmitPrompts, true, ct);
+        InvokerHasSpearPermissionAsync(Permission.SubmitPrompts, true, ct);
 
     public async Task<Result<bool>> InvokerCanEditOrDeletePromptsAsync(Prompt prompt, CancellationToken ct) {
         if(_operationContext.UserId == prompt.Submitter) return true;
-        return await InvokerHasPermissionAsync(Permission.ModeratePrompts, false, ct);
+        return await InvokerHasSpearPermissionAsync(Permission.ModeratePrompts, false, ct);
     }
 
     public Task<Result<bool>> InvokerCanModerateBooksAsync(CancellationToken ct) =>
-        InvokerHasPermissionAsync(Permission.ModerateBooks, false, ct);
+        InvokerHasSpearPermissionAsync(Permission.ModerateBooks, false, ct);
+
+    public Task<Result<bool>> InvokerCanModifyAuthroizationAsync(CancellationToken ct) =>
+        InvokerHasDiscordPermissionAsync(DiscordPermission.ManageGuild, ct);
+
+    private async Task<Result<bool>> InvokerHasDiscordPermissionAsync(DiscordPermission permission, CancellationToken ct) {
+        var getGuild = await _guildApi.GetGuildAsync(_operationContext.GuildId, ct: ct);
+        if(!getGuild.IsDefined(out var guild)) return Result<bool>.FromError(getGuild);
+        if(guild.OwnerID == _operationContext.UserId) return true;
+
+        var getRp = await GetInvokerRolesAndPermissionsAsync(ct);
+        if(!getRp.IsDefined(out var rp)) return Result<bool>.FromError(getRp);
+        return rp.Permissions.HasPermission(permission);
+    }
 
     /// <summary>
     /// Returns whether the invoking user from the operation context has the given <paramref name="permission"/>.
@@ -119,7 +149,7 @@ public class AuthorizationService {
     /// return true.
     /// </para>
     /// </remarks>
-    private async Task<Result<bool>> InvokerHasPermissionAsync(Permission permission, bool @default, CancellationToken ct) {
+    private async Task<Result<bool>> InvokerHasSpearPermissionAsync(Permission permission, bool @default, CancellationToken ct) {
         var getGuild = await _guildApi.GetGuildAsync(_operationContext.GuildId, ct: ct);
         if(!getGuild.IsDefined(out var guild)) return Result<bool>.FromError(getGuild);
         if(guild.OwnerID == _operationContext.UserId) return true;

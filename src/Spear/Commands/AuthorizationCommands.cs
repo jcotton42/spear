@@ -15,7 +15,6 @@ namespace Spear.Commands;
 public partial class OldMan {
     [Group("auth")]
     [RequireContext(ChannelContext.Guild)]
-    [RequireDiscordPermission(DiscordPermission.ManageGuild)]
     public class AuthorizationCommands : CommandGroup {
         private readonly AuthorizationService _authorization;
         private readonly ICommandContext _commandContext;
