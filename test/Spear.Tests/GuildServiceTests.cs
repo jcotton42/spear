@@ -1,8 +1,6 @@
-using Bogus;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Remora.Discord.API;
 using Spear.Models;
 using Spear.Services;
 
@@ -10,14 +8,9 @@ namespace Spear.Tests;
 
 public class GuildServiceTests : TestBase, IClassFixture<ServicesFixture> {
     private readonly SpearContext _dbContext;
-    private readonly Faker<Guild> _guildFaker;
     private readonly GuildService _guilds;
 
     public GuildServiceTests(ServicesFixture servicesFixture) : base(servicesFixture) {
-        _guildFaker = new Faker<Guild>()
-            .RuleFor(g => g.Id, faker => DiscordSnowflake.New(faker.Random.ULong()))
-            .RuleFor(g => g.Name, faker => faker.Company.CompanyName());
-
         _dbContext = _scope.ServiceProvider.GetRequiredService<SpearContext>();
         _guilds = _scope.ServiceProvider.GetRequiredService<GuildService>();
     }

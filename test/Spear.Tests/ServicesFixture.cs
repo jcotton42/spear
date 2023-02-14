@@ -4,6 +4,8 @@ using DotNet.Testcontainers.Containers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Remora.Discord.API.Abstractions.Rest;
+using Remora.Discord.Commands.Contexts;
 using Respawn;
 using Spear.Models;
 using Spear.Services;
@@ -32,6 +34,10 @@ public class ServicesFixture : IAsyncLifetime {
             .AddLogging()
             .AddDbContext<SpearContext>(options => options.UseNpgsql(_dbContainer.ConnectionString))
             .AddScoped<GuildService>()
+            .AddScopedMocked<IDiscordRestChannelAPI>()
+            .AddScopedMocked<IDiscordRestGuildAPI>()
+            .AddScopedMocked<ISpearOperationContext>()
+            .AddScoped<AuthorizationService>()
             .BuildServiceProvider();
 
         using var scope = Services.CreateScope();
