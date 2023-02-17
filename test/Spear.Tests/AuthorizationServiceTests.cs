@@ -33,21 +33,15 @@ public class AuthorizationServiceTests : TestBase, IClassFixture<ServicesFixture
 
     [Fact]
     public async Task HasSpearPermissionCheck() {
-        var faker = new Faker();
-        var userId = DiscordSnowflake.New(faker.Random.ULong());
-        var spearGuild = _guildFaker.Generate();
-
-        var discordGuildRoles = new AutoFaker<Role>()
-            .RuleFor(r => r.ID, f => DiscordSnowflake.New(f.Random.ULong()))
-            .RuleFor(r => r.Permissions, _ => DiscordPermissionSet.Empty)
-            .Generate(5);
-        var discordGuildMember = new AutoFaker<GuildMember>()
-            .RuleFor(gm => gm.Roles, _ => discordGuildRoles.Select(r => r.ID).ToList())
-            .Generate();
-        var discordGuild = new AutoFaker<RemoraGuild>()
-            .RuleFor(g => g.OwnerID, _ => userId)
-            .RuleFor(g => g.ID, spearGuild.Id)
-            .Generate();
+        var userId = DataFactory.CreateUserId();
+        var discordGuildRoles = new Role[] {
+            DataFactory.CreateRole(),
+            DataFactory.CreateRole(),
+            DataFactory.CreateRole(),
+        };
+        var discordGuildMember = DataFactory.CreateGuildMember(discordGuildRoles);
+        var discordGuild = DataFactory.CreateRemoraGuild(ownerId: userId);
+        var spearGuild = DataFactory.CreateSpearGuild(discordGuild);
 
         _guildApiMock
             .Setup(g => g.GetGuildAsync(spearGuild.Id, It.IsAny<Optional<bool>>(), It.IsAny<CancellationToken>()).Result)
@@ -56,7 +50,7 @@ public class AuthorizationServiceTests : TestBase, IClassFixture<ServicesFixture
             .Setup(g => g.GetGuildRolesAsync(spearGuild.Id, It.IsAny<CancellationToken>()).Result)
             .Returns(Result<IReadOnlyList<IRole>>.FromSuccess(discordGuildRoles));
         _guildApiMock
-            .Setup(g => g.GetGuildMemberAsync(spearGuild.Id, It.IsAny<Snowflake>(), It.IsAny<CancellationToken>()).Result)
+            .Setup(g => g.GetGuildMemberAsync(spearGuild.Id, userId, It.IsAny<CancellationToken>()).Result)
             .Returns(Result<IGuildMember>.FromSuccess(discordGuildMember));
         _operationContextMock
             .Setup(oc => oc.GuildId)
