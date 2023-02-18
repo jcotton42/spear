@@ -23,6 +23,10 @@ public class AuthorizationServiceTests : TestBase, IClassFixture<ServicesFixture
     private readonly Mock<IDiscordRestGuildAPI> _guildApiMock;
     private readonly Mock<ISpearOperationContext> _operationContextMock;
 
+    public TheoryData<Role[]> Roles { get; } = new() {
+        new Role[] {}
+    };
+
     public AuthorizationServiceTests(ServicesFixture servicesFixture) : base(servicesFixture) {
         _authorization = _scope.ServiceProvider.GetRequiredService<AuthorizationService>();
         _channelApiMock = _scope.ServiceProvider.GetRequiredService<Mock<IDiscordRestChannelAPI>>();

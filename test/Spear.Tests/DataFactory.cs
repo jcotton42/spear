@@ -4,6 +4,7 @@ using Remora.Discord.API;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
 using Remora.Rest.Core;
+using Spear.Models;
 using RemoraGuild = Remora.Discord.API.Objects.Guild;
 using SpearGuild = Spear.Models.Guild;
 
@@ -26,6 +27,23 @@ public static class DataFactory {
             .RuleFor(gm => gm.Roles, _ => roles.Select(r => r.ID).ToList().AsReadOnly())
             .RuleFor(gm => gm.Nickname, f => f.Internet.UserName())
             .Generate();
+    }
+
+    public static PermissionDefault CreatePermissionDefault(RemoraGuild guild, Permission permission, PermissionMode mode) {
+        return new PermissionDefault {
+            GuildId = guild.ID,
+            Mode = mode,
+            Permission = permission,
+        };
+    }
+
+    public static PermissionEntry CreatePermissionEntry(RemoraGuild guild, Role role, Permission permission, PermissionMode mode) {
+        return new PermissionEntry {
+            GuildId = guild.ID,
+            Mode = mode,
+            Permission = permission,
+            RoleId = role.ID,
+        };
     }
 
     public static RemoraGuild CreateRemoraGuild(Snowflake? ownerId = null) {
