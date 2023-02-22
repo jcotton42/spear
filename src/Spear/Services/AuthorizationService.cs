@@ -72,7 +72,7 @@ public class AuthorizationService {
     public Task<Result> DenyPermissionAsync(Snowflake roleId, Permission permission, CancellationToken ct) =>
         UpsertPermissionAsync(roleId, permission, PermissionMode.Deny, ct);
 
-    private async Task<Result> UpsertPermissionAsync(Snowflake roleId, Permission permission, PermissionMode mode, CancellationToken ct) {
+    internal async Task<Result> UpsertPermissionAsync(Snowflake roleId, Permission permission, PermissionMode mode, CancellationToken ct) {
         var getCanModify = await InvokerCanModifyAuthroizationAsync(ct);
         if(!getCanModify.IsDefined(out var canModify)) return Result.FromError(getCanModify);
         if(!canModify) return new PermissionDeniedError("You do not have permission to modify authorization.", DiscordPermission.ManageGuild);
@@ -119,7 +119,7 @@ public class AuthorizationService {
     public Task<Result<bool>> InvokerCanModifyAuthroizationAsync(CancellationToken ct) =>
         InvokerHasDiscordPermissionAsync(DiscordPermission.ManageGuild, ct);
 
-    private async Task<Result<bool>> InvokerHasDiscordPermissionAsync(DiscordPermission permission, CancellationToken ct) {
+    internal async Task<Result<bool>> InvokerHasDiscordPermissionAsync(DiscordPermission permission, CancellationToken ct) {
         var getGuild = await _guildApi.GetGuildAsync(_operationContext.GuildId, ct: ct);
         if(!getGuild.IsDefined(out var guild)) return Result<bool>.FromError(getGuild);
         if(guild.OwnerID == _operationContext.UserId) return true;
@@ -149,7 +149,7 @@ public class AuthorizationService {
     /// return true.
     /// </para>
     /// </remarks>
-    private async Task<Result<bool>> InvokerHasSpearPermissionAsync(Permission permission, bool @default, CancellationToken ct) {
+    internal async Task<Result<bool>> InvokerHasSpearPermissionAsync(Permission permission, bool @default, CancellationToken ct) {
         var getGuild = await _guildApi.GetGuildAsync(_operationContext.GuildId, ct: ct);
         if(!getGuild.IsDefined(out var guild)) return Result<bool>.FromError(getGuild);
         if(guild.OwnerID == _operationContext.UserId) return true;

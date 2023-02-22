@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Spear.Tests"/>
     <PackageReference Include="EFCore.NamingConventions" Version="7.0.0" />
     <PackageReference Include="EntityFrameworkCore.Exceptions.PostgreSQL" Version="6.0.3" />
     <PackageReference Include="FuzzySharp" Version="2.0.2" />
